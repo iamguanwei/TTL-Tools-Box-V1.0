@@ -302,6 +302,16 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// </summary>
         private string _tempFolder = 临时_工作目录;
 
+        /// <summary>
+        /// 最近的任务提交信息列表。
+        /// </summary>
+        private readonly List<string> _recentSubmitInfos = new List<string>();
+
+        /// <summary>
+        /// 悬浮提示工具。
+        /// </summary>
+        private ToolTip _submitInfoToolTip;
+
         #endregion
 
         #region UI初始化
@@ -327,6 +337,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             dgv_语音生成_任务清单.AutoGenerateColumns = false;
             dgv_语音生成_任务清单.AllowUserToAddRows = false;
             dgv_语音生成_任务清单.DataSource = _voiceGenerationTaskQueue.Tasks;
+            dgv_语音生成_任务清单.CellFormatting += dgv_语音生成_任务清单_CellFormatting;
 
             dgv_语音生成_任务清单.Columns.Clear();
             dgv_语音生成_任务清单.Columns.Add(new DataGridViewTextBoxColumn { Name = "Id", DataPropertyName = "Id", HeaderText = "编号", Width = 150, ReadOnly = true });
@@ -350,6 +361,14 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             // 加载"自动开始任务"复选框状态
             bool autoStart = bool.Parse(Setting.GetValue(nameof(cb_语音生成_自动开始任务), true.ToString()));
             cb_语音生成_自动开始任务.Checked = autoStart;
+
+            // 初始化悬浮提示工具
+            _submitInfoToolTip = new ToolTip();
+            _submitInfoToolTip.InitialDelay = 500;
+            _submitInfoToolTip.ShowAlways = true;
+
+            // 绑定鼠标悬浮事件
+            lab_语音生成_任务提交信息.MouseHover += lab_语音生成_任务提交信息_MouseHover;
         }
 
         #endregion
@@ -393,6 +412,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 Invoke(new Action(() => VoiceGenerationTaskQueue_TaskProgressUpdated(sender, e)));
                 return;
             }
+            OnProjectModified();
             refresh语音生成任务清单DataGridView();
         }
 
@@ -432,7 +452,33 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 Invoke(new Action(() => VoiceGenerationTaskQueue_TaskSubmitInfo(sender, e)));
                 return;
             }
-            this.lab_语音生成_任务提交信息.Text = $"正在提交任务 {e.TaskId} 第 {e.ItemIndex} 项：{e.TextPreview}";
+            string textPreview = e.TextPreview ?? string.Empty;
+            string submitInfo = $"[{DateTime.Now:HH:mm:ss}] {e.TaskId} - 提交第{e.ItemIndex}段，{textPreview}";
+            this.lab_语音生成_任务提交信息.Text = submitInfo;
+
+            // 添加到历史记录列表开头
+            _recentSubmitInfos.Insert(0, submitInfo);
+
+            // 保持列表最多10条记录
+            if (_recentSubmitInfos.Count > 10)
+            {
+                _recentSubmitInfos.RemoveAt(10);
+            }
+        }
+
+        /// <summary>
+        /// 事件处理：任务提交信息标签鼠标悬浮。
+        /// </summary>
+        private void lab_语音生成_任务提交信息_MouseHover(object sender, EventArgs e)
+        {
+            if (_recentSubmitInfos.Count == 0)
+            {
+                _submitInfoToolTip.SetToolTip(lab_语音生成_任务提交信息, "暂无任务提交记录");
+                return;
+            }
+
+            string toolTipText = string.Join(Environment.NewLine, _recentSubmitInfos);
+            _submitInfoToolTip.SetToolTip(lab_语音生成_任务提交信息, toolTipText);
         }
 
         /// <summary>
@@ -761,20 +807,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 if (hasRunningTask)
                 {
                     _voiceGenerationTaskQueue.Stop();
-                    Task.Run(async () =>
-                    {
-                        int waitCount = 0;
-                        while (_voiceGenerationTaskQueue.IsRunning && waitCount < 50)
-                        {
-                            await Task.Delay(100);
-                            waitCount++;
-                        }
-
-                        this.Invoke(new Action(() =>
-                        {
-                            deleteTasksAndCleanup(tasksToDelete);
-                        }));
-                    });
+                    deleteTasksAndCleanup(tasksToDelete);
                 }
                 else
                 {
@@ -961,6 +994,74 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         private void dgv_语音生成_任务清单_SelectionChanged(object sender, EventArgs e)
         {
             update语音生成选中行信息();
+        }
+
+        /// <summary>
+        /// 事件处理：单元格格式化（设置行颜色）。
+        /// </summary>
+        private void dgv_语音生成_任务清单_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.RowIndex >= dgv_语音生成_任务清单.Rows.Count)
+                return;
+
+            var row = dgv_语音生成_任务清单.Rows[e.RowIndex];
+            if (row.DataBoundItem is VoiceGenerationTask task)
+            {
+                bool isSelected = row.Selected;
+
+                switch (task.Status)
+                {
+                    case VoiceGenerationTaskStatus.正在生成:
+                        if (isSelected)
+                        {
+                            row.DefaultCellStyle.SelectionBackColor = Color.FromArgb(84, 130, 53);
+                        }
+                        else
+                        {
+                            row.DefaultCellStyle.BackColor = Color.FromArgb(154, 230, 154);
+                        }
+                        row.DefaultCellStyle.ForeColor = dgv_语音生成_任务清单.DefaultCellStyle.ForeColor;
+                        row.DefaultCellStyle.SelectionForeColor = dgv_语音生成_任务清单.DefaultCellStyle.SelectionForeColor;
+                        break;
+                    case VoiceGenerationTaskStatus.排队中:
+                        if (isSelected)
+                        {
+                            row.DefaultCellStyle.SelectionBackColor = Color.FromArgb(204, 153, 0);
+                        }
+                        else
+                        {
+                            row.DefaultCellStyle.BackColor = Color.FromArgb(252, 237, 124);
+                        }
+                        row.DefaultCellStyle.ForeColor = dgv_语音生成_任务清单.DefaultCellStyle.ForeColor;
+                        row.DefaultCellStyle.SelectionForeColor = dgv_语音生成_任务清单.DefaultCellStyle.SelectionForeColor;
+                        break;
+                    case VoiceGenerationTaskStatus.已完成:
+                        if (isSelected)
+                        {
+                            row.DefaultCellStyle.SelectionForeColor = Color.FromArgb(191, 191, 191);
+                        }
+                        else
+                        {
+                            row.DefaultCellStyle.ForeColor = Color.FromArgb(93, 93, 93);
+                        }
+                        row.DefaultCellStyle.BackColor = dgv_语音生成_任务清单.DefaultCellStyle.BackColor;
+                        row.DefaultCellStyle.SelectionBackColor = dgv_语音生成_任务清单.DefaultCellStyle.SelectionBackColor;
+                        break;
+                    case VoiceGenerationTaskStatus.生成失败:
+                        row.DefaultCellStyle.ForeColor = Color.FromArgb(191, 0, 0);
+                        row.DefaultCellStyle.SelectionForeColor = dgv_语音生成_任务清单.DefaultCellStyle.SelectionForeColor;
+                        row.DefaultCellStyle.BackColor = dgv_语音生成_任务清单.DefaultCellStyle.BackColor;
+                        row.DefaultCellStyle.SelectionBackColor = dgv_语音生成_任务清单.DefaultCellStyle.SelectionBackColor;
+                        break;
+                    case VoiceGenerationTaskStatus.未开始:
+                    default:
+                        row.DefaultCellStyle.BackColor = dgv_语音生成_任务清单.DefaultCellStyle.BackColor;
+                        row.DefaultCellStyle.SelectionBackColor = dgv_语音生成_任务清单.DefaultCellStyle.SelectionBackColor;
+                        row.DefaultCellStyle.ForeColor = dgv_语音生成_任务清单.DefaultCellStyle.ForeColor;
+                        row.DefaultCellStyle.SelectionForeColor = dgv_语音生成_任务清单.DefaultCellStyle.SelectionForeColor;
+                        break;
+                }
+            }
         }
 
         /// <summary>
@@ -1310,10 +1411,12 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                             }
                         }
 
+                        bool isSingleTask = paragraphArray.Length == 1;
                         foreach (var parapraph in paragraphArray)
                         {
                             VoiceGenerationTask task = new VoiceGenerationTask();
-                            task.SaveFile = Path.Combine(folderPath, $"{mFileName}{FileHelper.PadNumber(fileCount++, fileCountMax)}{eFileName}");
+                            string fileNameSuffix = isSingleTask ? string.Empty : FileHelper.PadNumber(fileCount++, fileCountMax);
+                            task.SaveFile = Path.Combine(folderPath, $"{mFileName}{fileNameSuffix}{eFileName}");
                             task.Speed = speed;
                             task.SpaceTime = spaceTime;
 
@@ -1498,7 +1601,9 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                     ProgressDetail = task.ProgressDetail,
                     SaveFile = task.SaveFile,
                     Speed = task.Speed,
-                    SpaceTime = task.SpaceTime
+                    SpaceTime = task.SpaceTime,
+                    IsPreview = task.IsPreview,
+                    PreviewSourceName = task.PreviewSourceName
                 };
 
                 foreach (VoiceGenerationTaskItem item in task.Items)
@@ -1555,7 +1660,9 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                         ProgressDetail = task.ProgressDetail,
                         SaveFile = task.SaveFile,
                         Speed = task.Speed,
-                        SpaceTime = task.SpaceTime
+                        SpaceTime = task.SpaceTime,
+                        IsPreview = task.IsPreview,
+                        PreviewSourceName = task.PreviewSourceName
                     };
 
                     if (voiceTask.Status == VoiceGenerationTaskStatus.正在生成 ||

@@ -570,6 +570,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             var voicePreviewColumn = this.dgv_角色映射.Columns["VoicePreview"];
             if (voicePreviewColumn != null && e.ColumnIndex == voicePreviewColumn.Index && e.RowIndex >= 0)
             {
+                this.dgv_角色映射.Rows[e.RowIndex].Cells[e.ColumnIndex].ToolTipText = string.Empty;
                 if (e.RowIndex < _roleMappingItems.Count)
                 {
                     var item = _roleMappingItems[e.RowIndex];

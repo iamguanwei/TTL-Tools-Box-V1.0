@@ -89,8 +89,20 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
         public void AddTask(VoiceGenerationTask task)
         {
             if (task == null) return;
+            task.PropertyChanged += OnTaskPropertyChanged;
             _tasks.Add(task);
             OnTaskListChanged(TaskListChangeType.Added, task);
+        }
+
+        /// <summary>
+        /// 任务属性变更处理。
+        /// </summary>
+        private void OnTaskPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (sender is VoiceGenerationTask task)
+            {
+                OnTaskProgressUpdated(task, task.Progress, task.ProgressDetail);
+            }
         }
 
         /// <summary>
@@ -113,7 +125,18 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
         /// <returns>是否成功移除。</returns>
         public bool RemoveTask(VoiceGenerationTask task)
         {
-            if (task == null || task.Status == VoiceGenerationTaskStatus.正在生成) return false;
+            if (task == null) return false;
+
+            bool isCurrentTask = (_currentTask == task);
+            
+            if (isCurrentTask && task.Status == VoiceGenerationTaskStatus.正在生成)
+            {
+                _shouldStop = true;
+                _currentTaskDeleted = true;
+            }
+            
+            task.PropertyChanged -= OnTaskPropertyChanged;
+            
             bool removed = _tasks.Remove(task);
             if (removed)
             {
@@ -127,6 +150,10 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
         /// </summary>
         public void ClearTasks()
         {
+            foreach (var task in _tasks)
+            {
+                task.PropertyChanged -= OnTaskPropertyChanged;
+            }
             _tasks.Clear();
             OnTaskListChanged(TaskListChangeType.Cleared, null);
         }
@@ -211,6 +238,9 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
         {
             if (_getEngineConnector?.Invoke() == null) return;
 
+            var connectionStatus = _getConnectionStatus?.Invoke() ?? TtlEngineConnectionStatus.未连接;
+            if (connectionStatus != TtlEngineConnectionStatus.连接成功) return;
+
             bool hasQueuedTask = _tasks.Any(t => t.Status == VoiceGenerationTaskStatus.排队中);
             lock (_lock)
             {
@@ -271,7 +301,7 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
         /// <summary>
         /// 处理下一个任务。
         /// </summary>
-        protected virtual async void ProcessNextTask()
+        protected virtual async Task ProcessNextTaskAsync()
         {
             lock (_lock)
             {
@@ -284,6 +314,7 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
                 _shouldStop = false;
 
                 var engineConnector = _getEngineConnector?.Invoke();
+                string engineId = engineConnector?.Id ?? string.Empty;
                 if (engineConnector == null)
                 {
                     lock (_lock)
@@ -318,6 +349,8 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
                 if (connectionStatus == TtlEngineConnectionStatus.未连接 ||
                     connectionStatus == TtlEngineConnectionStatus.连接失败)
                 {
+                    nextTask.ProgressDetail = "等待TTL引擎连接...";
+                    OnTaskProgressUpdated(nextTask, nextTask.Progress, nextTask.ProgressDetail);
                     lock (_lock)
                     {
                         _isRunning = false;
@@ -345,6 +378,14 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
         }
 
         /// <summary>
+        /// 处理下一个任务（异步包装器，用于事件处理和委托调用）。
+        /// </summary>
+        protected virtual void ProcessNextTask()
+        {
+            _ = ProcessNextTaskAsync();
+        }
+
+        /// <summary>
         /// 执行单个任务。
         /// </summary>
         /// <param name="task">要执行的任务。</param>
@@ -361,6 +402,7 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
                 if (_shouldStop) return;
 
                 var engineConnector = _getEngineConnector?.Invoke();
+                string engineId = engineConnector?.Id ?? string.Empty;
                 var connectionStatus = _getConnectionStatus?.Invoke() ?? TtlEngineConnectionStatus.未连接;
 
                 if (engineConnector == null ||
@@ -446,7 +488,7 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
                             if (sendTask == null)
                             {
                                 string textPreview = taskItem.Text.Length > 10 ? taskItem.Text.Substring(0, 10) + "……" : taskItem.Text;
-                                OnTaskSubmitInfo(task.Id, i + 1, textPreview);
+                                OnTaskSubmitInfo(task.Id, engineId, i + 1, textPreview);
                                 sendTask = engineConnector.SendTextAsync(taskItem.Text, parameters);
                             }
 
@@ -559,7 +601,22 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
             }
             finally
             {
-                if (success)
+                if (_currentTaskDeleted)
+                {
+                    foreach (var item in task.Items)
+                    {
+                        if (!string.IsNullOrWhiteSpace(item.TempFile) && File.Exists(item.TempFile))
+                        {
+                            try { File.Delete(item.TempFile); } catch { }
+                        }
+                    }
+                    foreach (string tempFile in tempFilesToCleanup)
+                    {
+                        try { if (File.Exists(tempFile)) File.Delete(tempFile); } catch { }
+                    }
+                    _currentTaskDeleted = false;
+                }
+                else if (success)
                 {
                     foreach (var item in task.Items)
                     {
@@ -598,9 +655,22 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
                 }
 
                 _currentTask = null;
+
+                bool wasDeleted = _currentTaskDeleted;
+                _currentTaskDeleted = false;
+
                 OnTaskStatusChanged(task);
 
-                if (!engineConnectionLost)
+                if (wasDeleted)
+                {
+                    lock (_lock)
+                    {
+                        _isRunning = false;
+                        _shouldStop = false;
+                        ProcessNextTask();
+                    }
+                }
+                else if (!engineConnectionLost)
                 {
                     lock (_lock)
                     {
@@ -669,9 +739,9 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
         /// <summary>
         /// 触发任务提交信息事件。
         /// </summary>
-        protected virtual void OnTaskSubmitInfo(string taskId, int itemIndex, string textPreview)
+        protected virtual void OnTaskSubmitInfo(string taskId, string engineId, int itemIndex, string textPreview)
         {
-            TaskSubmitInfo?.Invoke(this, new TaskSubmitInfoEventArgs(taskId, itemIndex, textPreview));
+            TaskSubmitInfo?.Invoke(this, new TaskSubmitInfoEventArgs(taskId, engineId, itemIndex, textPreview));
         }
 
         /// <summary>
@@ -699,6 +769,7 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
         private bool _isRunning = false;
         private bool _shouldStop = false;
         private VoiceGenerationTask _currentTask = null;
+        private bool _currentTaskDeleted = false;
 
         #endregion
 
@@ -738,7 +809,7 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
                     {
                         string inputFileName = Path.GetFileName(validFiles[0]);
                         string outputFileName = Path.GetFileName(tempOutput);
-                        string ffmpegArgs = $"-i \"{inputFileName}\" -af \"apad=pad_dur={silenceDuration}\" -y \"{outputFileName}\"";
+                        string ffmpegArgs = $"-i \"{inputFileName}\" -af \"apad=pad_dur={silenceDuration:F1}\" -y \"{outputFileName}\"";
                         RunFFmpegCommand(ffmpegArgs, _tempFolder).Wait();
                     }
                     else
@@ -799,7 +870,7 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
                 string inputFileName = Path.GetFileName(inputFile);
                 string outputFileName = $"speed_{Guid.NewGuid()}.wav";
                 string outputFile = Path.Combine(_tempFolder, outputFileName);
-                string ffmpegArgs = $"-i \"{inputFileName}\" -filter:a \"atempo={tempo}\" -y \"{outputFileName}\"";
+                string ffmpegArgs = $"-i \"{inputFileName}\" -filter:a \"atempo={tempo:F1}\" -y \"{outputFileName}\"";
 
                 RunFFmpegCommand(ffmpegArgs, _tempFolder).Wait();
 
@@ -1017,6 +1088,11 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
         public string TaskId { get; }
 
         /// <summary>
+        /// 获取TTL引擎ID。
+        /// </summary>
+        public string EngineId { get; }
+
+        /// <summary>
         /// 获取任务项索引。
         /// </summary>
         public int ItemIndex { get; }
@@ -1029,9 +1105,10 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
         /// <summary>
         /// 初始化TaskSubmitInfoEventArgs类的新实例。
         /// </summary>
-        public TaskSubmitInfoEventArgs(string taskId, int itemIndex, string textPreview)
+        public TaskSubmitInfoEventArgs(string taskId, string engineId, int itemIndex, string textPreview)
         {
             TaskId = taskId;
+            EngineId = engineId;
             ItemIndex = itemIndex;
             TextPreview = textPreview;
         }

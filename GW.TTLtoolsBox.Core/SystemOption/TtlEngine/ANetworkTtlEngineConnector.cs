@@ -1,4 +1,5 @@
 using System;
+using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -34,6 +35,8 @@ namespace GW.TTLtoolsBox.Core.SystemOption.TtlEngine
         public ANetworkTtlEngineConnector()
             : base()
         {
+            _httpClient = new HttpClient();
+            _httpClient.Timeout = Timeout.InfiniteTimeSpan;
         }
 
         #endregion
@@ -151,10 +154,14 @@ namespace GW.TTLtoolsBox.Core.SystemOption.TtlEngine
 
         #region private
 
+        #region 字段
+
         /// <summary>
         /// HTTP客户端
         /// </summary>
-        private readonly HttpClient _httpClient = new HttpClient();
+        private readonly HttpClient _httpClient;
+
+        #endregion
 
         #endregion
     }

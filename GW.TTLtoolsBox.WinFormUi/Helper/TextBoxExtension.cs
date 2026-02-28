@@ -11,16 +11,32 @@ namespace GW.TTLtoolsBox.WinFormUi.Helper
     {
         #region Windows API
 
+        /// <summary>
+        /// 垂直滚动消息常量。
+        /// </summary>
         private const int WM_VSCROLL = 0x115;
+
+        /// <summary>
+        /// 滚动条拇指位置常量。
+        /// </summary>
         private const int SB_THUMBPOSITION = 4;
 
+        /// <summary>
+        /// 垂直滚动条标识。
+        /// </summary>
+        private const int SB_VERT = 1;
+
+        /// <summary>
+        /// 发送Windows消息。
+        /// </summary>
         [DllImport("user32.dll")]
         private static extern int SendMessage(IntPtr hWnd, int wMsg, int wParam, int lParam);
 
+        /// <summary>
+        /// 获取滚动条位置。
+        /// </summary>
         [DllImport("user32.dll")]
         private static extern int GetScrollPos(IntPtr hWnd, int nBar);
-
-        private const int SB_VERT = 1;
 
         #endregion
 

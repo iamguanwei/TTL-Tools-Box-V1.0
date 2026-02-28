@@ -13,7 +13,7 @@ namespace GW.TTLtoolsBox.WinFormUi.Helper
         /// <summary>
         /// 配置文件名称（含路径）。
         /// </summary>
-        public static string Setting_File_Full_Name = $@"{AppDomain.CurrentDomain.BaseDirectory}\Setting.ini";
+        public static string 设置_文件_全名 = $@"{AppDomain.CurrentDomain.BaseDirectory}\Setting.ini";
 
         #endregion
 
@@ -31,7 +31,7 @@ namespace GW.TTLtoolsBox.WinFormUi.Helper
         {
             if (_iniFileAccesser == null)
             {
-                _iniFileAccesser = new IniFileAccesser(Setting_File_Full_Name);
+                _iniFileAccesser = new IniFileAccesser(设置_文件_全名);
             }
             return _iniFileAccesser;
         }

@@ -305,6 +305,11 @@ namespace GW.TTLtoolsBox.WinFormUi.UI
 
         #region private
 
+        /// <summary>
+        /// 处理编辑控件显示事件，实现自动填充功能。
+        /// </summary>
+        /// <param name="sender">事件发送者。</param>
+        /// <param name="e">事件参数。</param>
         private void CustomNewLineDataGridView_EditingControlShowing(object sender, DataGridViewEditingControlShowingEventArgs e)
         {
             if (this.CurrentCell == null)
@@ -342,6 +347,12 @@ namespace GW.TTLtoolsBox.WinFormUi.UI
             }
         }
 
+        /// <summary>
+        /// 根据内容和列宽计算自动行高。
+        /// </summary>
+        /// <param name="colIndex">列索引。</param>
+        /// <param name="content">文本内容。</param>
+        /// <returns>计算后的行高。</returns>
         private int GetAutoRowHeight(int colIndex, string content)
         {
             Size textSize = TextRenderer.MeasureText(
@@ -354,6 +365,11 @@ namespace GW.TTLtoolsBox.WinFormUi.UI
             return Math.Max(textSize.Height + 10, this.RowTemplate.MinimumHeight);
         }
 
+        /// <summary>
+        /// 判断单元格内容是否为空。
+        /// </summary>
+        /// <param name="cell">要检查的单元格。</param>
+        /// <returns>如果内容为空返回true，否则返回false。</returns>
         private bool IsCellContentEmpty(DataGridViewCell cell)
         {
             if (cell.Value == null || cell.Value == DBNull.Value || string.IsNullOrEmpty(cell.Value.ToString()))

@@ -135,6 +135,48 @@ namespace GW.TTLtoolsBox.Core.FileAccesser
         }
 
         /// <summary>
+        /// 获取文本拆分的拆分长度。
+        /// </summary>
+        /// <param name="engineId">TTL引擎ID</param>
+        /// <param name="defaultValue">默认值</param>
+        /// <returns>拆分长度</returns>
+        public int GetTextSplit_SplitLength(string engineId, int defaultValue = 100)
+        {
+            if (string.IsNullOrEmpty(engineId))
+            {
+                return defaultValue;
+            }
+
+            if (_projectData.EngineDataDic.TryGetValue(engineId, out EngineProjectData engineData))
+            {
+                return engineData.TextSplit_SplitLength > 0 ? engineData.TextSplit_SplitLength : defaultValue;
+            }
+
+            return defaultValue;
+        }
+
+        /// <summary>
+        /// 设置文本拆分的拆分长度。
+        /// </summary>
+        /// <param name="engineId">TTL引擎ID</param>
+        /// <param name="value">拆分长度</param>
+        public void SetTextSplit_SplitLength(string engineId, int value)
+        {
+            if (string.IsNullOrEmpty(engineId))
+            {
+                return;
+            }
+
+            EnsureEngineData(engineId);
+            _projectData.EngineDataDic[engineId].TextSplit_SplitLength = value;
+
+            if (IsAutoSave)
+            {
+                Save();
+            }
+        }
+
+        /// <summary>
         /// 获取多音字替换的最终文本。
         /// </summary>
         /// <param name="engineId">TTL引擎ID</param>

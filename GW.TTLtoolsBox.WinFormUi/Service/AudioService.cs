@@ -158,11 +158,18 @@ namespace GW.TTLtoolsBox.WinFormUi.Service
 
         #region 方法
 
+        /// <summary>
+        /// 触发播放完成事件。
+        /// </summary>
         private void OnPlaybackCompleted()
         {
             PlaybackCompleted?.Invoke(this, EventArgs.Empty);
         }
 
+        /// <summary>
+        /// 触发播放错误事件。
+        /// </summary>
+        /// <param name="message">错误消息。</param>
         private void OnPlaybackError(string message)
         {
             PlaybackError?.Invoke(this, new AudioErrorEventArgs(message));

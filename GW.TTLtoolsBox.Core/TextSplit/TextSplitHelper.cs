@@ -104,6 +104,64 @@ namespace GW.TTLtoolsBox.Core.TextSplit
             return string.Join("\r\n", _resultBlocks);
         }
 
+        /// <summary>
+        /// 按空行拆分文本。
+        /// </summary>
+        /// <param name="originalText">原始文本。</param>
+        /// <param name="trimSegments">是否移除拆分后段落的首尾空白符（默认false）。</param>
+        /// <returns>拆分后的文本（段落间用\r\n分隔）。</returns>
+        /// <remarks>
+        /// 拆分规则：
+        /// - 遇到空行时拆分成段
+        /// - 连续的空行中，最后一个空行作为分隔符，前面的空行追加到上一段末尾
+        /// - 开头的空行（没有上一段）会被忽略
+        /// - 每段内的换行符会被移除
+        /// </remarks>
+        public static string SplitByEmptyLine(string originalText, bool trimSegments = false)
+        {
+            if (string.IsNullOrEmpty(originalText)) return string.Empty;
+
+            string[] _lines = originalText.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
+            List<string> _paragraphs = new List<string>();
+            StringBuilder _currentParagraph = new StringBuilder();
+            int _emptyLineCount = 0;
+
+            foreach (string _line in _lines)
+            {
+                if (string.IsNullOrWhiteSpace(_line))
+                {
+                    _emptyLineCount++;
+                }
+                else
+                {
+                    if (_emptyLineCount > 0 && _currentParagraph.Length > 0)
+                    {
+                        for (int i = 0; i < _emptyLineCount - 1; i++)
+                        {
+                            _currentParagraph.Append("\r\n");
+                        }
+                        string _paragraph = trimSegments ? _currentParagraph.ToString().Trim() : _currentParagraph.ToString();
+                        _paragraphs.Add(_paragraph);
+                        _currentParagraph.Clear();
+                    }
+                    _emptyLineCount = 0;
+                    _currentParagraph.Append(_line);
+                }
+            }
+
+            if (_currentParagraph.Length > 0)
+            {
+                if (_emptyLineCount > 0)
+                {
+                    _currentParagraph.Append("\r\n");
+                }
+                string _lastParagraph = trimSegments ? _currentParagraph.ToString().Trim() : _currentParagraph.ToString();
+                _paragraphs.Add(_lastParagraph);
+            }
+
+            return string.Join("\r\n", _paragraphs);
+        }
+
         #endregion
 
         #region private

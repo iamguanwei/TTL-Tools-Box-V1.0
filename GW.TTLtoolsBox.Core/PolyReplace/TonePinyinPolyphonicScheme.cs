@@ -36,6 +36,8 @@ namespace GW.TTLtoolsBox.Core.PolyReplace
                 List<string> replaceStrList = base.ReplaceStrings.ToList();
 
                 List<List<string>> charPinyinList = new List<List<string>>();
+                bool hasPolyphonicChar = false;
+
                 foreach (char ch in originalText)
                 {
                     string[] pinyinArray = PinyinHelper.GetAllPinyinWithToneMark(ch);
@@ -52,14 +54,22 @@ namespace GW.TTLtoolsBox.Core.PolyReplace
                         }
                         else
                         {
+                            hasPolyphonicChar = true;
                             charPinyinList.Add(distinctPinyins);
                         }
                     }
                 }
 
-                List<string> allCombinations = generatePinyinCombinations(charPinyinList, originalText);
-
-                replaceStrList.AddRange(allCombinations);
+                if (hasPolyphonicChar)
+                {
+                    List<string> allCombinations = generatePinyinCombinations(charPinyinList, originalText);
+                    replaceStrList.AddRange(allCombinations);
+                }
+                else
+                {
+                    string pinyinCombination = generateAllPinyinCombination(originalText);
+                    replaceStrList.Add(pinyinCombination);
+                }
 
                 base.ReplaceStrings = replaceStrList.Distinct().ToArray();
             }
@@ -94,7 +104,6 @@ namespace GW.TTLtoolsBox.Core.PolyReplace
         {
             List<string> combinations = new List<string>();
 
-            // 递归生成笛卡尔积
             generateCombinationsRecursive(charPinyinList, 0, "", originalText, combinations);
 
             return combinations;
@@ -110,7 +119,6 @@ namespace GW.TTLtoolsBox.Core.PolyReplace
         /// <param name="result">最终结果列表</param>
         private void generateCombinationsRecursive(List<List<string>> charPinyinList, int index, string currentCombination, string originalText, List<string> result)
         {
-            // 递归终止条件：处理完所有字
             if (index >= charPinyinList.Count)
             {
                 if (!string.IsNullOrEmpty(currentCombination))
@@ -120,29 +128,48 @@ namespace GW.TTLtoolsBox.Core.PolyReplace
                 return;
             }
 
-            // 获取当前字的所有读音
             List<string> pinyins = charPinyinList[index];
             char currentChar = originalText[index];
 
-            // 遍历当前字的每个读音，拼接组合
             foreach (string pinyin in pinyins)
             {
                 string newCombination;
                 if (pinyin == currentChar.ToString())
                 {
-                    // 非中文字符：直接拼接原字符（无拼音标注）
                     newCombination = currentCombination + currentChar;
                 }
                 else
                 {
-                    // 中文字符：拼接 [声母][韵母] 格式
                     var py = PinyinHelper.SplitPinyin(pinyin);
                     newCombination = currentCombination + $" [{py.Shengmu}][{py.Yunmu}] ";
                 }
 
-                // 递归处理下一个字
                 generateCombinationsRecursive(charPinyinList, index + 1, newCombination, originalText, result);
             }
+        }
+
+        /// <summary>
+        /// 生成所有字符的拼音组合（用于无非多音字的情况）。
+        /// </summary>
+        /// <param name="originalText">原始文本。</param>
+        /// <returns>拼音组合字符串。</returns>
+        private string generateAllPinyinCombination(string originalText)
+        {
+            StringBuilder sb = new StringBuilder();
+            foreach (char ch in originalText)
+            {
+                string[] pinyinArray = PinyinHelper.GetAllPinyinWithToneMark(ch);
+                if (pinyinArray == null || pinyinArray.Length == 0)
+                {
+                    sb.Append(ch);
+                }
+                else
+                {
+                    var py = PinyinHelper.SplitPinyin(pinyinArray[0]);
+                    sb.Append($" [{py.Shengmu}][{py.Yunmu}] ");
+                }
+            }
+            return sb.ToString();
         }
 
         #endregion

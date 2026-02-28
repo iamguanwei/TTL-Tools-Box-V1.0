@@ -236,10 +236,10 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
 
             this.nud_语音生成预处理_空白时长.Value = decimal.Parse(Setting.GetValue(this.nud_语音生成预处理_空白时长.Name, "1"));
 
-            this.cb_语音生成预处理_默认角色设置.DropDownStyle = ComboBoxStyle.DropDownList;
+            this.cb_语音生成预处理_默认朗读者设置.DropDownStyle = ComboBoxStyle.DropDownList;
 
             this.nud_语音生成预处理_语速设置.ValueChanged += nud_语音生成预处理_语速设置_ValueChanged;
-            this.cb_语音生成预处理_默认角色设置.SelectedIndexChanged += cb_语音生成预处理_默认角色设置_SelectedIndexChanged;
+            this.cb_语音生成预处理_默认朗读者设置.SelectedIndexChanged += cb_语音生成预处理_默认角色设置_SelectedIndexChanged;
 
             // 加载默认角色
             load语音生成预处理默认角色设置();
@@ -350,7 +350,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         {
             Action act = () =>
             {
-                this.cb_语音生成预处理_默认角色设置.Items.Clear();
+                this.cb_语音生成预处理_默认朗读者设置.Items.Clear();
 
                 var currentEngine = TtlSchemeController?.CurrentEngineConnector;
                 if (currentEngine != null)
@@ -360,14 +360,14 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                     {
                         foreach (var speaker in speakers)
                         {
-                            this.cb_语音生成预处理_默认角色设置.Items.Add(speaker);
+                            this.cb_语音生成预处理_默认朗读者设置.Items.Add(speaker);
                         }
 
-                        string key = $"{this.cb_语音生成预处理_默认角色设置.Name}_{currentEngine.Id}";
+                        string key = $"{this.cb_语音生成预处理_默认朗读者设置.Name}_{currentEngine.Id}";
                         string savedSourceName = Setting.GetValue(key, string.Empty);
                         if (string.IsNullOrEmpty(savedSourceName))
                         {
-                            key = $"{this.cb_语音生成预处理_默认角色设置.Name}_{currentEngine.Name}";
+                            key = $"{this.cb_语音生成预处理_默认朗读者设置.Name}_{currentEngine.Name}";
                             savedSourceName = Setting.GetValue(key, string.Empty);
                         }
 
@@ -376,16 +376,16 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                             var savedSpeaker = speakers.FirstOrDefault(s => s.SourceName == savedSourceName);
                             if (savedSpeaker != null)
                             {
-                                this.cb_语音生成预处理_默认角色设置.SelectedItem = savedSpeaker;
+                                this.cb_语音生成预处理_默认朗读者设置.SelectedItem = savedSpeaker;
                             }
                             else
                             {
-                                this.cb_语音生成预处理_默认角色设置.SelectedIndex = 0;
+                                this.cb_语音生成预处理_默认朗读者设置.SelectedIndex = 0;
                             }
                         }
                         else
                         {
-                            this.cb_语音生成预处理_默认角色设置.SelectedIndex = 0;
+                            this.cb_语音生成预处理_默认朗读者设置.SelectedIndex = 0;
                         }
                     }
                 }
@@ -514,7 +514,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             {
                 if (string.IsNullOrWhiteSpace(this.tb_语音生成预处理_最终文本.Text) == false)
                 {
-                    if (this.cb_语音生成预处理_默认角色设置.SelectedItem is SpeakerInfo defaultSpeaker)
+                    if (this.cb_语音生成预处理_默认朗读者设置.SelectedItem is SpeakerInfo defaultSpeaker)
                     {
                         string defaultRole = defaultSpeaker.SourceName;
 
@@ -677,9 +677,9 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         private void cb_语音生成预处理_默认角色设置_SelectedIndexChanged(object sender, EventArgs e)
         {
             var currentEngine = TtlSchemeController?.CurrentEngineConnector;
-            if (currentEngine != null && this.cb_语音生成预处理_默认角色设置.SelectedItem is SpeakerInfo speaker)
+            if (currentEngine != null && this.cb_语音生成预处理_默认朗读者设置.SelectedItem is SpeakerInfo speaker)
             {
-                string key = $"{this.cb_语音生成预处理_默认角色设置.Name}_{currentEngine.Id}";
+                string key = $"{this.cb_语音生成预处理_默认朗读者设置.Name}_{currentEngine.Id}";
                 Setting.SetValue(key, speaker.SourceName);
             }
         }

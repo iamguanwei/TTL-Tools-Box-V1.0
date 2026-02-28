@@ -218,6 +218,11 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// </summary>
         private int _work多音字Index = -1;
 
+        /// <summary>
+        /// 记录每个组是否已经完成（用户已离开该组）。
+        /// </summary>
+        private HashSet<PolyphonicItem> _completedGroups = new HashSet<PolyphonicItem>();
+
         #endregion
 
         #region UI初始化
@@ -419,7 +424,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 if (psIndex >= 0 && psIndex < pi.PolyphonicSchemes.Length)
                 {
                     var psName = pi.PolyphonicSchemes[psIndex].Name;
-                    _working多音字Array = ReplaceItem.GenerateFromText(targetText, _savedPolyphonicItemArray, psName).OrderByDescending(r => r.OriginalText.Length).ToArray();
+                    _working多音字Array = ReplaceItem.GenerateFromText(targetText, _savedPolyphonicItemArray, psName);
                 }
             }
         }
@@ -535,7 +540,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// <returns>统计信息文本。</returns>
         private string BuildWorkStatisticsText()
         {
-            var subArray = _working多音字Array.Where(a => a.UsedPolyphonicItem.Equals(_working多音字Array[_work多音字Index].UsedPolyphonicItem) == true).ToArray();
+            var subArray = GetCurrentGroupItems();
             return string.Format(
                 "共有 {0} 个多音词需要替换，正在替换第 {1} 个，剩余 {2} 个。本组共有 {3} 个，剩余 {4} 个。",
                 $"{_working多音字Array.Length}",
@@ -543,6 +548,139 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 $"{_working多音字Array.Length - (_work多音字Index + 1)}",
                 $"{subArray.Length}",
                 $"{subArray.Length - Array.IndexOf(subArray, _working多音字Array[_work多音字Index]) - 1}");
+        }
+
+        /// <summary>
+        /// 获取当前替换项所属组的所有替换项。
+        /// </summary>
+        /// <returns>当前组的所有替换项数组。</returns>
+        private ReplaceItem[] GetCurrentGroupItems()
+        {
+            if (_work多音字Index < 0 || _work多音字Index >= _working多音字Array.Length)
+                return Array.Empty<ReplaceItem>();
+
+            var currentItem = _working多音字Array[_work多音字Index];
+            return _working多音字Array
+                .Where(a => a.UsedPolyphonicItem.Equals(currentItem.UsedPolyphonicItem))
+                .ToArray();
+        }
+
+        /// <summary>
+        /// 检查当前组是否已完成。
+        /// </summary>
+        /// <returns>如果当前组已完成返回true，否则返回false。</returns>
+        private bool IsCurrentGroupCompleted()
+        {
+            if (_work多音字Index < 0 || _work多音字Index >= _working多音字Array.Length)
+                return false;
+
+            return _completedGroups.Contains(_working多音字Array[_work多音字Index].UsedPolyphonicItem);
+        }
+
+        /// <summary>
+        /// 获取当前组内最后一个已确认选择的替换词的选择索引。
+        /// </summary>
+        /// <returns>选择索引。</returns>
+        private int GetLastConfirmedSelectionInGroup()
+        {
+            var groupItems = GetCurrentGroupItems();
+            if (groupItems.Length == 0) return 0;
+
+            int currentIndexInGroup = Array.IndexOf(groupItems, _working多音字Array[_work多音字Index]);
+
+            for (int i = currentIndexInGroup; i >= 0; i--)
+            {
+                if (groupItems[i].IsReplaceTextUpdated)
+                {
+                    return GetSelectionIndex(groupItems[i]);
+                }
+            }
+
+            return 0;
+        }
+
+        /// <summary>
+        /// 获取替换项的选择索引。
+        /// </summary>
+        /// <param name="item">替换项。</param>
+        /// <returns>选择索引。</returns>
+        private int GetSelectionIndex(ReplaceItem item)
+        {
+            if (!item.IsReplaceTextUpdated) return 0;
+
+            var alternativeTexts = item.AlternativeTexts;
+            string replaceText = item.ReplaceText;
+
+            for (int i = 0; i < alternativeTexts.Length; i++)
+            {
+                if (alternativeTexts[i] == replaceText)
+                    return i;
+            }
+
+            return 0;
+        }
+
+        /// <summary>
+        /// 为替换项设置选择索引。
+        /// </summary>
+        /// <param name="item">替换项。</param>
+        /// <param name="selectedIndex">选择索引。</param>
+        private void SetSelectionIndex(ReplaceItem item, int selectedIndex)
+        {
+            var alternativeTexts = item.AlternativeTexts;
+            if (selectedIndex >= 0 && selectedIndex < alternativeTexts.Length)
+            {
+                if (selectedIndex == 0)
+                {
+                    item.UpdateReplaceText(null);
+                }
+                else
+                {
+                    item.UpdateReplaceText(alternativeTexts[selectedIndex]);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 从UI获取当前选择索引。
+        /// </summary>
+        /// <returns>选择索引。</returns>
+        private int GetSelectionIndexFromUi()
+        {
+            RadioButton selectedRadioButton = this.pan_待选词.Controls
+                .OfType<RadioButton>()
+                .FirstOrDefault(rb => rb.Checked && rb != this.rb_待选词模板);
+
+            if (selectedRadioButton != null)
+            {
+                var alternativeTexts = _working多音字Array[_work多音字Index].AlternativeTexts;
+                return Array.IndexOf(alternativeTexts, selectedRadioButton.Text);
+            }
+
+            return 0;
+        }
+
+        /// <summary>
+        /// 获取指定索引的替换词应该使用的选择索引。
+        /// </summary>
+        /// <param name="itemIndex">替换词索引。</param>
+        /// <returns>选择索引。</returns>
+        private int GetLastConfirmedSelectionForItem(int itemIndex)
+        {
+            var item = _working多音字Array[itemIndex];
+
+            for (int i = itemIndex - 1; i >= 0; i--)
+            {
+                if (_working多音字Array[i].UsedPolyphonicItem.Equals(item.UsedPolyphonicItem))
+                {
+                    if (_working多音字Array[i].IsReplaceTextUpdated)
+                    {
+                        return GetSelectionIndex(_working多音字Array[i]);
+                    }
+                }
+            }
+
+            return 0;
         }
 
         /// <summary>
@@ -567,36 +705,28 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// <returns>选中的索引。</returns>
         private int CalculateSelectedIndex(ReplaceItem currentReplaceItem, string[] alternativeTexts, ReplaceItem previousReplaceItem)
         {
-            string currentReplaceText = currentReplaceItem.ReplaceText;
-            bool hasUpdated = currentReplaceItem.IsReplaceTextUpdated;
-
-            if (hasUpdated)
+            if (currentReplaceItem.IsReplaceTextUpdated)
             {
-                for (int i = 0; i < alternativeTexts.Length; i++)
-                {
-                    if ((i == 0 && currentReplaceText == currentReplaceItem.TargetText) ||
-                        (i > 0 && alternativeTexts[i] == currentReplaceText))
-                    {
-                        return i;
-                    }
-                }
+                return GetSelectionIndex(currentReplaceItem);
             }
-            else if (previousReplaceItem != null)
-            {
-                bool isSamePolyphonicItem = currentReplaceItem.UsedPolyphonicItem != null &&
-                                           previousReplaceItem.UsedPolyphonicItem != null &&
-                                           currentReplaceItem.UsedPolyphonicItem.Equals(previousReplaceItem.UsedPolyphonicItem);
 
-                if (isSamePolyphonicItem)
+            bool isGroupCompleted = IsCurrentGroupCompleted();
+
+            if (isGroupCompleted)
+            {
+                return GetLastConfirmedSelectionInGroup();
+            }
+            else
+            {
+                if (previousReplaceItem != null)
                 {
-                    string previousReplaceText = previousReplaceItem.ReplaceText;
-                    for (int i = 0; i < alternativeTexts.Length; i++)
+                    bool isSamePolyphonicItem = currentReplaceItem.UsedPolyphonicItem != null &&
+                                               previousReplaceItem.UsedPolyphonicItem != null &&
+                                               currentReplaceItem.UsedPolyphonicItem.Equals(previousReplaceItem.UsedPolyphonicItem);
+
+                    if (isSamePolyphonicItem)
                     {
-                        if ((i == 0 && previousReplaceText == previousReplaceItem.TargetText) ||
-                            (i > 0 && alternativeTexts[i] == previousReplaceText))
-                        {
-                            return i;
-                        }
+                        return GetSelectionIndex(previousReplaceItem);
                     }
                 }
             }
@@ -706,6 +836,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                         {
                             _work多音字Index = 0;
                             _do多音字替换Working = true;
+                            _completedGroups.Clear();
 
                             refresh多音字替换Ui();
                         }
@@ -958,9 +1089,10 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         {
             if (_do多音字替换Working == true && _work多音字Index > 0)
             {
-                save多音字Working(_working多音字Array[_work多音字Index]);
-                _work多音字Index--;
+                int currentSelection = GetSelectionIndexFromUi();
+                SetSelectionIndex(_working多音字Array[_work多音字Index], currentSelection);
 
+                _work多音字Index--;
                 refresh多音字替换Ui();
             }
         }
@@ -974,9 +1106,20 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         {
             if (_do多音字替换Working == true && _work多音字Index < _working多音字Array.Length - 1)
             {
-                save多音字Working(_working多音字Array[_work多音字Index]);
-                _work多音字Index++;
+                int currentSelection = GetSelectionIndexFromUi();
+                SetSelectionIndex(_working多音字Array[_work多音字Index], currentSelection);
 
+                var nextItem = _working多音字Array[_work多音字Index + 1];
+                var currentItem = _working多音字Array[_work多音字Index];
+
+                bool isSameGroup = nextItem.UsedPolyphonicItem.Equals(currentItem.UsedPolyphonicItem);
+
+                if (!isSameGroup)
+                {
+                    _completedGroups.Add(currentItem.UsedPolyphonicItem);
+                }
+
+                _work多音字Index++;
                 refresh多音字替换Ui();
             }
         }
@@ -990,14 +1133,24 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         {
             if (_do多音字替换Working == true)
             {
-                var subArray = _working多音字Array.Where(a => a.UsedPolyphonicItem.Equals(_working多音字Array[_work多音字Index].UsedPolyphonicItem) == true).ToArray();
-                int index = Array.IndexOf(subArray, _working多音字Array[_work多音字Index]);
-                for (int i = index; i < subArray.Length; i++)
+                var currentGroupItems = GetCurrentGroupItems();
+                if (currentGroupItems.Length == 0) return;
+
+                int currentIndexInGroup = Array.IndexOf(currentGroupItems, _working多音字Array[_work多音字Index]);
+
+                int currentSelection = GetSelectionIndexFromUi();
+
+                for (int i = currentIndexInGroup; i < currentGroupItems.Length; i++)
                 {
-                    save多音字Working(_working多音字Array[i]);
+                    if (!currentGroupItems[i].IsReplaceTextUpdated)
+                    {
+                        SetSelectionIndex(currentGroupItems[i], currentSelection);
+                    }
                 }
 
-                _work多音字Index += subArray.Length - index;
+                _completedGroups.Add(_working多音字Array[_work多音字Index].UsedPolyphonicItem);
+
+                _work多音字Index += currentGroupItems.Length - currentIndexInGroup;
                 refresh多音字替换Ui();
             }
         }
@@ -1011,7 +1164,18 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         {
             if (_do多音字替换Working == true)
             {
-                save多音字Working(_working多音字Array[_work多音字Index]);
+                int currentSelection = GetSelectionIndexFromUi();
+                SetSelectionIndex(_working多音字Array[_work多音字Index], currentSelection);
+
+                for (int i = _work多音字Index + 1; i < _working多音字Array.Length; i++)
+                {
+                    if (!_working多音字Array[i].IsReplaceTextUpdated)
+                    {
+                        int selection = GetLastConfirmedSelectionForItem(i);
+                        SetSelectionIndex(_working多音字Array[i], selection);
+                    }
+                }
+
                 this.tb_最终文本.Text = ReplaceItem.ApplyReplacements(this.tb_最终文本.Text, _working多音字Array);
 
                 bt_取消应用替换结果_Click(sender, e);

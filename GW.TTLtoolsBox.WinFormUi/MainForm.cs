@@ -60,6 +60,7 @@ namespace GW.TTLtoolsBox.WinFormUi
             InitializeComponent();
 
             this.Icon = new Icon(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Icons", "app.ico"));
+            this.ShowIcon = true;
 
             // 解析命令行参数
             if (args != null && args.Length > 0 && !string.IsNullOrWhiteSpace(args[0]))
@@ -75,9 +76,10 @@ namespace GW.TTLtoolsBox.WinFormUi
             init角色和情绪指定Panel();
             init语音生成预处理Panel();
             init语音生成Panel();
-            initTtlEngineConnectionManager();
 
             _ttlSchemeController.EndInitializing();
+
+            _ttlSchemePanel?.StartTtlEngineConnectionIfSelected();
         }
 
         #endregion
@@ -438,6 +440,11 @@ namespace GW.TTLtoolsBox.WinFormUi
             loadProjectFile(filePath);
             _isInitializing = false;
             _ttlSchemePanel?.StartTtlEngineConnectionIfSelected();
+
+            if (!string.IsNullOrEmpty(_currentProjectFilePath) && File.Exists(_currentProjectFilePath))
+            {
+                addToRecentProjects(_currentProjectFilePath);
+            }
         }
 
         /// <summary>
@@ -527,6 +534,7 @@ namespace GW.TTLtoolsBox.WinFormUi
                 saveProjectFile();
                 _isSaveOnClose = true;
                 setProjectMenuEnabled(true);
+                addToRecentProjects(saveFileDialog.FileName);
                 MessageBox.Show("项目已保存", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return true;
             }
@@ -624,6 +632,7 @@ namespace GW.TTLtoolsBox.WinFormUi
                     updateTitleBar();
                     _isSaveOnClose = true;
                     setProjectMenuEnabled(true);
+                    addToRecentProjects(openFileDialog.FileName);
                 }
                 catch (Exception ex)
                 {
@@ -844,6 +853,12 @@ namespace GW.TTLtoolsBox.WinFormUi
                 _previewVoiceManager.StatusChanged += previewVoiceManager_StatusChanged;
             }
 
+            // 初始化最近打开的项目菜单
+            {
+                loadRecentProjects();
+                updateRecentProjectsMenu();
+            }
+
             // 更新标题栏
             updateTitleBar();
         }
@@ -924,29 +939,14 @@ namespace GW.TTLtoolsBox.WinFormUi
         private const string _Setting_Key_LastProjectFolder = "LastProjectFolder";
 
         /// <summary>
-        /// TTL引擎连接状态管理器。
+        /// 最近打开项目列表的设置键。
         /// </summary>
-        private System.Windows.Forms.Timer _ttlEngineConnectionTimer = null;
+        private const string _Setting_Key_RecentProjects = "RecentProjects";
 
         /// <summary>
-        /// TTL引擎当前连接状态。
+        /// 最近打开的项目文件路径列表。
         /// </summary>
-        private TtlEngineConnectionStatus _ttlEngineConnectionStatus = TtlEngineConnectionStatus.未连接;
-
-        /// <summary>
-        /// TTL引擎连接倒计时（秒）。
-        /// </summary>
-        private int _ttlEngineConnectionCountdown = 0;
-
-        /// <summary>
-        /// TTL引擎连接/重试倒计时（秒）。
-        /// </summary>
-        private int _ttlEngineRetryCountdown = 0;
-
-        /// <summary>
-        /// 连接任务取消令牌源。
-        /// </summary>
-        private System.Threading.CancellationTokenSource _connectionCancellationTokenSource = null;
+        private List<string> _recentProjects = new List<string>();
 
         #endregion
 
@@ -981,6 +981,9 @@ namespace GW.TTLtoolsBox.WinFormUi
                 // 先保存旧引擎的数据
                 if (!string.IsNullOrEmpty(e.PreviousEngineId))
                 {
+                    _textSplitPanel.CurrentEngineId = e.PreviousEngineId;
+                    _textSplitPanel.SaveData(getProjectFile());
+
                     _roleMappingPanel.ProjectFile = getProjectFile();
                     _roleMappingPanel.CurrentEngineId = e.PreviousEngineId;
                     _roleMappingPanel.SaveData();
@@ -1003,6 +1006,7 @@ namespace GW.TTLtoolsBox.WinFormUi
                 }
 
                 // 加载新引擎的数据
+                load文本拆分();
                 load角色映射PanelData();
                 load多音字替换PanelData();
                 _roleEmotionPanel?.SetupDataGridViewColumns();
@@ -1023,6 +1027,10 @@ namespace GW.TTLtoolsBox.WinFormUi
                 save语音生成PanelData(getCurrentEngineId());
             };
             _ttlSchemePanel.StopVoiceGenerationTaskQueueRequested += (s, e) => _voiceGenerationPanel?.StopQueueAndWait();
+            _ttlSchemePanel.ConnectionStatusChanged += (s, e) =>
+            {
+                updateTtlEngineConnectionStatusLabel();
+            };
 
             // 将面板添加到TabPage
             this.tp_TTL方案.Controls.Clear();
@@ -1072,6 +1080,7 @@ namespace GW.TTLtoolsBox.WinFormUi
         {
             if (_textSplitPanel != null)
             {
+                _textSplitPanel.CurrentEngineId = getCurrentEngineId();
                 _textSplitPanel.SaveData(getProjectFile());
             }
         }
@@ -1083,6 +1092,7 @@ namespace GW.TTLtoolsBox.WinFormUi
         {
             if (_textSplitPanel != null)
             {
+                _textSplitPanel.CurrentEngineId = getCurrentEngineId();
                 _textSplitPanel.LoadData(getProjectFile());
             }
         }
@@ -1149,7 +1159,7 @@ namespace GW.TTLtoolsBox.WinFormUi
             _voiceGenerationPanel.TtlSchemeController = _ttlSchemeController;
             _voiceGenerationPanel.TempFolder = _tempFolder;
             _voiceGenerationPanel.FfmpegPath = Ffmpeg_文件;
-            _voiceGenerationPanel.GetEngineConnectionStatus = () => _ttlEngineConnectionStatus;
+            _voiceGenerationPanel.GetEngineConnectionStatus = () => _ttlSchemePanel?.ConnectionStatus ?? TtlEngineConnectionStatus.未连接;
             _voiceGenerationPanel.RequestEngineConnection = () => checkAndConnectTtlEngineWhenTaskStarts();
             _voiceGenerationPanel.PlaySound = playSound;
             _voiceGenerationPanel.FindSpeaker = findSpeakerByShowName;
@@ -1162,6 +1172,8 @@ namespace GW.TTLtoolsBox.WinFormUi
             this.pan_语音生成.Controls.Add(_voiceGenerationPanel);
 
             _voiceGenerationPanel.InitializePanel();
+
+            _ttlSchemePanel.VoiceGenerationTaskQueue = _voiceGenerationPanel.TaskQueue;
         }
 
         /// <summary>
@@ -1398,171 +1410,40 @@ namespace GW.TTLtoolsBox.WinFormUi
         #region TTL引擎操作
 
         /// <summary>
-        /// 初始化TTL引擎连接管理器
-        /// </summary>
-        private void initTtlEngineConnectionManager()
-        {
-            _ttlEngineConnectionTimer = new System.Windows.Forms.Timer();
-            _ttlEngineConnectionTimer.Interval = 1000;
-            _ttlEngineConnectionTimer.Tick += ttlEngineConnectionTimer_Tick;
-
-            _ttlEngineConnectionTimer.Start();
-
-            updateTtlEngineConnectionStatusLabel();
-        }
-
-        /// <summary>
-        /// 定时器回调：处理TTL引擎连接状态
-        /// </summary>
-        private void ttlEngineConnectionTimer_Tick(object sender, EventArgs e)
-        {
-            switch (_ttlEngineConnectionStatus)
-            {
-                case TtlEngineConnectionStatus.连接中:
-                    handle连接中状态();
-                    break;
-                case TtlEngineConnectionStatus.连接成功:
-                    handle连接成功状态();
-                    break;
-                case TtlEngineConnectionStatus.连接失败:
-                    handle连接失败状态();
-                    break;
-                case TtlEngineConnectionStatus.未连接:
-                default:
-                    break;
-            }
-
-            updateTtlEngineConnectionStatusLabel();
-        }
-
-        /// <summary>
-        /// 处理连接中状态
-        /// </summary>
-        private void handle连接中状态()
-        {
-            _ttlEngineConnectionCountdown--;
-            if (_ttlEngineConnectionCountdown <= 0)
-            {
-                _ttlEngineConnectionStatus = TtlEngineConnectionStatus.连接失败;
-                _ttlEngineRetryCountdown = 连接失败_重试间隔秒数;
-                stop连接任务();
-            }
-        }
-
-        /// <summary>
-        /// 处理连接成功状态
-        /// </summary>
-        private void handle连接成功状态()
-        {
-            _ttlEngineRetryCountdown--;
-            if (_ttlEngineRetryCountdown <= 0)
-            {
-                start连接TTL引擎();
-            }
-        }
-
-        /// <summary>
-        /// 处理连接失败状态
-        /// </summary>
-        private void handle连接失败状态()
-        {
-            _ttlEngineRetryCountdown--;
-            if (_ttlEngineRetryCountdown <= 0)
-            {
-                start连接TTL引擎();
-            }
-        }
-
-        /// <summary>
-        /// 开始连接TTL引擎
-        /// </summary>
-        private async void start连接TTL引擎()
-        {
-            var currentEngine = _ttlSchemeController.CurrentEngineConnector;
-            if (currentEngine == null)
-            {
-                _ttlEngineConnectionStatus = TtlEngineConnectionStatus.未连接;
-                updateTtlEngineConnectionStatusLabel();
-                _ttlSchemePanel?.RefreshUi();
-                return;
-            }
-
-            int timeoutSeconds = (int)currentEngine.ConnectionTimeout.TotalSeconds;
-            if (timeoutSeconds <= 0)
-            {
-                timeoutSeconds = 30;
-            }
-
-            _ttlEngineConnectionStatus = TtlEngineConnectionStatus.连接中;
-            _ttlEngineConnectionCountdown = timeoutSeconds;
-            updateTtlEngineConnectionStatusLabel();
-            _ttlSchemePanel?.RefreshUi();
-
-            try
-            {
-                await currentEngine.ConnectAsync();
-
-                _ttlEngineConnectionStatus = TtlEngineConnectionStatus.连接成功;
-                _ttlEngineRetryCountdown = 连接成功_验证间隔秒数;
-
-                _ttlSchemePanel?.RefreshSpeakers();
-
-                _voiceGenerationPanel?.TryResumeQueue();
-            }
-            catch
-            {
-                _ttlEngineConnectionStatus = TtlEngineConnectionStatus.连接失败;
-                _ttlEngineRetryCountdown = 连接失败_重试间隔秒数;
-            }
-            finally
-            {
-                _connectionCancellationTokenSource?.Dispose();
-                _connectionCancellationTokenSource = null;
-            }
-
-            updateTtlEngineConnectionStatusLabel();
-            _ttlSchemePanel?.RefreshUi();
-        }
-
-        /// <summary>
-        /// 停止连接任务
-        /// </summary>
-        private void stop连接任务()
-        {
-            _connectionCancellationTokenSource?.Cancel();
-        }
-
-        /// <summary>
         /// 更新TTL引擎连接状态标签
         /// </summary>
         private void updateTtlEngineConnectionStatusLabel()
         {
             Action action = () =>
             {
+                var status = _ttlSchemePanel?.ConnectionStatus ?? TtlEngineConnectionStatus.未连接;
+                var countdown = _ttlSchemePanel?.ConnectionCountdown ?? 0;
+                var retryCountdown = _ttlSchemePanel?.RetryCountdown ?? 0;
+                var currentEngine = _ttlSchemeController?.CurrentEngineConnector;
+
                 string statusText = string.Empty;
                 Color statusColor = SystemColors.ControlText;
 
-                var currentEngine = _ttlSchemeController.CurrentEngineConnector;
                 if (currentEngine == null)
                 {
                     statusText = "未选择TTL引擎";
                 }
                 else
                 {
-                    switch (_ttlEngineConnectionStatus)
+                    switch (status)
                     {
                         case TtlEngineConnectionStatus.未连接:
                             statusText = $"{currentEngine.Name}: 未连接";
                             break;
                         case TtlEngineConnectionStatus.连接中:
-                            statusText = $"{currentEngine.Name}: 连接中 ({_ttlEngineConnectionCountdown}秒)";
+                            statusText = $"{currentEngine.Name}: 连接中 ({countdown}秒)";
                             break;
                         case TtlEngineConnectionStatus.连接成功:
-                            statusText = $"{currentEngine.Name}: 已连接 ({_ttlEngineRetryCountdown}秒后验证)";
+                            statusText = $"{currentEngine.Name}: 已连接 ({retryCountdown}秒后验证)";
                             statusColor = Color.FromArgb(0, 150, 0);
                             break;
                         case TtlEngineConnectionStatus.连接失败:
-                            statusText = $"{currentEngine.Name}: 连接失败 ({_ttlEngineRetryCountdown}秒后重试)";
+                            statusText = $"{currentEngine.Name}: 连接失败 ({retryCountdown}秒后重试)";
                             statusColor = Color.FromArgb(200, 0, 0);
                             break;
                         default:
@@ -1583,14 +1464,11 @@ namespace GW.TTLtoolsBox.WinFormUi
         /// </summary>
         private void checkAndConnectTtlEngineWhenTaskStarts()
         {
-            if (_ttlEngineConnectionStatus == TtlEngineConnectionStatus.未连接 ||
-                _ttlEngineConnectionStatus == TtlEngineConnectionStatus.连接失败)
+            var status = _ttlSchemePanel?.ConnectionStatus ?? TtlEngineConnectionStatus.未连接;
+            if (status == TtlEngineConnectionStatus.未连接 ||
+                status == TtlEngineConnectionStatus.连接失败)
             {
-                if (_ttlEngineConnectionTimer != null && !_ttlEngineConnectionTimer.Enabled)
-                {
-                    _ttlEngineConnectionTimer.Start();
-                }
-                start连接TTL引擎();
+                _ttlSchemePanel?.StartConnectTtlEngine();
             }
         }
 
@@ -1602,6 +1480,172 @@ namespace GW.TTLtoolsBox.WinFormUi
         /// 临时工作目录。
         /// </summary>
         private string _tempFolder = 临时_工作目录;
+
+        #endregion
+
+        #region 最近打开项目操作
+
+        /// <summary>
+        /// 从配置文件加载最近打开的项目列表。
+        /// </summary>
+        private void loadRecentProjects()
+        {
+            string recentProjectsStr = Setting.GetValue(_Setting_Key_RecentProjects, string.Empty);
+            if (!string.IsNullOrWhiteSpace(recentProjectsStr))
+            {
+                _recentProjects = recentProjectsStr
+                    .Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries)
+                    .ToList();
+            }
+        }
+
+        /// <summary>
+        /// 保存最近打开的项目列表到配置文件。
+        /// </summary>
+        private void saveRecentProjects()
+        {
+            string recentProjectsStr = string.Join("|", _recentProjects);
+            Setting.SetValue(_Setting_Key_RecentProjects, recentProjectsStr);
+        }
+
+        /// <summary>
+        /// 将指定项目路径添加到最近打开的项目列表。
+        /// </summary>
+        /// <param name="filePath">项目文件路径。</param>
+        private void addToRecentProjects(string filePath)
+        {
+            if (string.IsNullOrWhiteSpace(filePath))
+            {
+                return;
+            }
+
+            filePath = filePath.Trim();
+
+            if (filePath.Equals(默认项目_文件, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            if (_recentProjects.Contains(filePath, StringComparer.OrdinalIgnoreCase))
+            {
+                _recentProjects.Remove(_recentProjects.First(p => p.Equals(filePath, StringComparison.OrdinalIgnoreCase)));
+            }
+
+            _recentProjects.Insert(0, filePath);
+
+            while (_recentProjects.Count > 最近打开项目_最大数量)
+            {
+                _recentProjects.RemoveAt(_recentProjects.Count - 1);
+            }
+
+            saveRecentProjects();
+            updateRecentProjectsMenu();
+        }
+
+        /// <summary>
+        /// 从最近打开的项目列表中移除指定路径。
+        /// </summary>
+        /// <param name="filePath">项目文件路径。</param>
+        private void removeFromRecentProjects(string filePath)
+        {
+            if (string.IsNullOrWhiteSpace(filePath))
+            {
+                return;
+            }
+
+            filePath = filePath.Trim();
+
+            var item = _recentProjects.FirstOrDefault(p => p.Equals(filePath, StringComparison.OrdinalIgnoreCase));
+            if (item != null)
+            {
+                _recentProjects.Remove(item);
+                saveRecentProjects();
+                updateRecentProjectsMenu();
+            }
+        }
+
+        /// <summary>
+        /// 更新"最近打开的项目"菜单项的子菜单。
+        /// </summary>
+        private void updateRecentProjectsMenu()
+        {
+            this.最近打开的项目HToolStripMenuItem.DropDownItems.Clear();
+
+            if (_recentProjects.Count == 0)
+            {
+                var emptyItem = new ToolStripMenuItem("(空)");
+                emptyItem.Enabled = false;
+                this.最近打开的项目HToolStripMenuItem.DropDownItems.Add(emptyItem);
+            }
+            else
+            {
+                foreach (var projectPath in _recentProjects)
+                {
+                    string fileName = Path.GetFileName(projectPath);
+                    var menuItem = new ToolStripMenuItem(fileName);
+                    menuItem.Tag = projectPath;
+                    menuItem.Click += recentProjectMenuItem_Click;
+                    this.最近打开的项目HToolStripMenuItem.DropDownItems.Add(menuItem);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 事件处理：点击最近打开的项目菜单项。
+        /// </summary>
+        /// <param name="sender">发送者。</param>
+        /// <param name="e">事件参数。</param>
+        private void recentProjectMenuItem_Click(object sender, EventArgs e)
+        {
+            var menuItem = sender as ToolStripMenuItem;
+            if (menuItem == null)
+            {
+                return;
+            }
+
+            string filePath = menuItem.Tag as string;
+            if (string.IsNullOrWhiteSpace(filePath))
+            {
+                return;
+            }
+
+            if (!File.Exists(filePath))
+            {
+                DialogResult result = MessageBox.Show(
+                    $"项目文件不存在：{filePath}\n\n是否从最近打开列表中移除？",
+                    "文件不存在",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning);
+
+                if (result == DialogResult.Yes)
+                {
+                    removeFromRecentProjects(filePath);
+                }
+
+                return;
+            }
+
+            if (!checkSaveAndConfirm())
+            {
+                return;
+            }
+
+            try
+            {
+                loadProjectFile(filePath);
+                _isProjectModified = false;
+                updateTitleBar();
+                _isSaveOnClose = true;
+                setProjectMenuEnabled(true);
+                addToRecentProjects(filePath);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"加载项目文件失败：{ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        #endregion
 
         /// <summary>
         /// 通过角色名或源名称查找SpeakerInfo对象。
@@ -1632,8 +1676,6 @@ namespace GW.TTLtoolsBox.WinFormUi
 
             return outValue;
         }
-
-        #endregion
 
         #endregion
 

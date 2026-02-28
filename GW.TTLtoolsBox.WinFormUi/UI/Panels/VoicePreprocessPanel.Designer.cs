@@ -36,10 +36,10 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.nud_语音生成预处理_空白时长 = new System.Windows.Forms.NumericUpDown();
             this.bt_语音生成预处理_发送到语音生成 = new System.Windows.Forms.Button();
             this.nud_语音生成预处理_语速设置 = new System.Windows.Forms.NumericUpDown();
-            this.cb_语音生成预处理_默认角色设置 = new System.Windows.Forms.ComboBox();
+            this.cb_语音生成预处理_默认朗读者设置 = new System.Windows.Forms.ComboBox();
             this.lab_语音生成预处理_语速设置 = new System.Windows.Forms.Label();
             this.lab_语音生成预处理_空白时长 = new System.Windows.Forms.Label();
-            this.lab_语音生成预处理_默认角色设置 = new System.Windows.Forms.Label();
+            this.lab_语音生成预处理_默认朗读者设置 = new System.Windows.Forms.Label();
             this.pan_语音生成预处理_参数.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.nud_语音生成预处理_空白时长)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.nud_语音生成预处理_语速设置)).BeginInit();
@@ -97,10 +97,10 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.pan_语音生成预处理_参数.Controls.Add(this.nud_语音生成预处理_空白时长);
             this.pan_语音生成预处理_参数.Controls.Add(this.bt_语音生成预处理_发送到语音生成);
             this.pan_语音生成预处理_参数.Controls.Add(this.nud_语音生成预处理_语速设置);
-            this.pan_语音生成预处理_参数.Controls.Add(this.cb_语音生成预处理_默认角色设置);
+            this.pan_语音生成预处理_参数.Controls.Add(this.cb_语音生成预处理_默认朗读者设置);
             this.pan_语音生成预处理_参数.Controls.Add(this.lab_语音生成预处理_语速设置);
             this.pan_语音生成预处理_参数.Controls.Add(this.lab_语音生成预处理_空白时长);
-            this.pan_语音生成预处理_参数.Controls.Add(this.lab_语音生成预处理_默认角色设置);
+            this.pan_语音生成预处理_参数.Controls.Add(this.lab_语音生成预处理_默认朗读者设置);
             this.pan_语音生成预处理_参数.Location = new System.Drawing.Point(0, 566);
             this.pan_语音生成预处理_参数.Name = "pan_语音生成预处理_参数";
             this.pan_语音生成预处理_参数.Size = new System.Drawing.Size(1280, 80);
@@ -154,14 +154,14 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             0});
             this.nud_语音生成预处理_语速设置.ValueChanged += new System.EventHandler(this.nud_语音生成预处理_语速设置_ValueChanged);
             // 
-            // cb_语音生成预处理_默认角色设置
+            // cb_语音生成预处理_默认朗读者设置
             // 
-            this.cb_语音生成预处理_默认角色设置.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cb_语音生成预处理_默认角色设置.FormattingEnabled = true;
-            this.cb_语音生成预处理_默认角色设置.Location = new System.Drawing.Point(84, 9);
-            this.cb_语音生成预处理_默认角色设置.Name = "cb_语音生成预处理_默认角色设置";
-            this.cb_语音生成预处理_默认角色设置.Size = new System.Drawing.Size(244, 20);
-            this.cb_语音生成预处理_默认角色设置.TabIndex = 1;
+            this.cb_语音生成预处理_默认朗读者设置.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cb_语音生成预处理_默认朗读者设置.FormattingEnabled = true;
+            this.cb_语音生成预处理_默认朗读者设置.Location = new System.Drawing.Point(95, 9);
+            this.cb_语音生成预处理_默认朗读者设置.Name = "cb_语音生成预处理_默认朗读者设置";
+            this.cb_语音生成预处理_默认朗读者设置.Size = new System.Drawing.Size(244, 20);
+            this.cb_语音生成预处理_默认朗读者设置.TabIndex = 1;
             // 
             // lab_语音生成预处理_语速设置
             // 
@@ -181,14 +181,14 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.lab_语音生成预处理_空白时长.TabIndex = 4;
             this.lab_语音生成预处理_空白时长.Text = "段间空白时长(秒)：";
             // 
-            // lab_语音生成预处理_默认角色设置
+            // lab_语音生成预处理_默认朗读者设置
             // 
-            this.lab_语音生成预处理_默认角色设置.AutoSize = true;
-            this.lab_语音生成预处理_默认角色设置.Location = new System.Drawing.Point(12, 13);
-            this.lab_语音生成预处理_默认角色设置.Name = "lab_语音生成预处理_默认角色设置";
-            this.lab_语音生成预处理_默认角色设置.Size = new System.Drawing.Size(65, 12);
-            this.lab_语音生成预处理_默认角色设置.TabIndex = 0;
-            this.lab_语音生成预处理_默认角色设置.Text = "默认角色：";
+            this.lab_语音生成预处理_默认朗读者设置.AutoSize = true;
+            this.lab_语音生成预处理_默认朗读者设置.Location = new System.Drawing.Point(12, 13);
+            this.lab_语音生成预处理_默认朗读者设置.Name = "lab_语音生成预处理_默认朗读者设置";
+            this.lab_语音生成预处理_默认朗读者设置.Size = new System.Drawing.Size(77, 12);
+            this.lab_语音生成预处理_默认朗读者设置.TabIndex = 0;
+            this.lab_语音生成预处理_默认朗读者设置.Text = "默认朗读者：";
             // 
             // VoicePreprocessPanel
             // 
@@ -219,10 +219,10 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         private System.Windows.Forms.Panel pan_语音生成预处理_参数;
         private System.Windows.Forms.NumericUpDown nud_语音生成预处理_空白时长;
         private System.Windows.Forms.NumericUpDown nud_语音生成预处理_语速设置;
-        private System.Windows.Forms.ComboBox cb_语音生成预处理_默认角色设置;
+        private System.Windows.Forms.ComboBox cb_语音生成预处理_默认朗读者设置;
         private System.Windows.Forms.Button bt_语音生成预处理_发送到语音生成;
         private System.Windows.Forms.Label lab_语音生成预处理_语速设置;
         private System.Windows.Forms.Label lab_语音生成预处理_空白时长;
-        private System.Windows.Forms.Label lab_语音生成预处理_默认角色设置;
+        private System.Windows.Forms.Label lab_语音生成预处理_默认朗读者设置;
     }
 }
