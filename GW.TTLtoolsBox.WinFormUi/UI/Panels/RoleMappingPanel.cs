@@ -6,7 +6,7 @@ using System.Linq;
 using System.Windows.Forms;
 using GW.TTLtoolsBox.Core.Entity;
 using GW.TTLtoolsBox.Core.FileAccesser;
-using GW.TTLtoolsBox.Core.SystemOption.TtlEngine;
+using GW.TTLtoolsBox.Core.TtlEngine;
 using GW.TTLtoolsBox.WinFormUi.Base;
 using GW.TTLtoolsBox.WinFormUi.Helper;
 using GW.TTLtoolsBox.WinFormUi.Manager;
@@ -310,6 +310,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         private void setup角色映射GridColumns()
         {
             this.dgv_角色映射.AutoGenerateColumns = false;
+            this.dgv_角色映射.ShowCellToolTips = false;
 
             this.dgv_角色映射.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             this.dgv_角色映射.DefaultCellStyle.SelectionBackColor = Color.LightBlue;
@@ -570,6 +571,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             var voicePreviewColumn = this.dgv_角色映射.Columns["VoicePreview"];
             if (voicePreviewColumn != null && e.ColumnIndex == voicePreviewColumn.Index && e.RowIndex >= 0)
             {
+                this.dgv_角色映射.Rows[e.RowIndex].Cells[e.ColumnIndex].ToolTipText = string.Empty;
                 if (e.RowIndex < _roleMappingItems.Count)
                 {
                     var item = _roleMappingItems[e.RowIndex];

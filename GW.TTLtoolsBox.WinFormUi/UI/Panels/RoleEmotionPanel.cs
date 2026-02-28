@@ -7,7 +7,7 @@ using System.Text;
 using System.Windows.Forms;
 using GW.TTLtoolsBox.Core.Entity;
 using GW.TTLtoolsBox.Core.FileAccesser;
-using GW.TTLtoolsBox.Core.SystemOption.TtlEngine;
+using GW.TTLtoolsBox.Core.TtlEngine;
 using GW.TTLtoolsBox.WinFormUi.Base;
 using GW.TTLtoolsBox.WinFormUi.Helper;
 using GW.TTLtoolsBox.WinFormUi.Manager;
@@ -47,6 +47,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// 角色和文本之间的分隔符。
         /// </summary>
         private const string 角色_文本分隔符 = Constants.角色_文本分隔符;
+        private Button bt_发送当前段落到下一步;
 
         /// <summary>
         /// 生成段落分隔符。
@@ -261,8 +262,11 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.bt_清理文本.Click -= bt_清理文本_Click;
             this.bt_清理文本.Click += bt_清理文本_Click;
 
-            this.bt_发送到下一步.Click -= bt_发送到下一步_Click;
-            this.bt_发送到下一步.Click += bt_发送到下一步_Click;
+            this.bt_发送所有段落到下一步.Click -= bt_发送到下一步_Click;
+            this.bt_发送所有段落到下一步.Click += bt_发送到下一步_Click;
+
+            this.bt_发送当前段落到下一步.Click -= bt_发送当前段落到下一步_Click;
+            this.bt_发送当前段落到下一步.Click += bt_发送当前段落到下一步_Click;
 
             this.bt_复制文本.Click -= bt_复制文本_Click;
             this.bt_复制文本.Click += bt_复制文本_Click;
@@ -297,7 +301,8 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         {
             bool hasData = _roleTextItems.Count > 0;
             this.bt_清理文本.Enabled = hasData;
-            this.bt_发送到下一步.Enabled = hasData;
+            this.bt_发送所有段落到下一步.Enabled = hasData;
+            this.bt_发送当前段落到下一步.Enabled = hasData;
             this.bt_复制文本.Enabled = hasData;
             this.bt_粘贴文本.Enabled = Clipboard.ContainsText();
         }
@@ -743,65 +748,87 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         }
 
         /// <summary>
-        /// 生成最终文本。
+        /// 生成指定段落的文本。
+        /// </summary>
+        /// <param name="paragraphItems">段落的角色文本项列表。</param>
+        /// <returns>生成的段落文本。</returns>
+        private string generateParagraphText(List<RoleTextItem> paragraphItems)
+        {
+            StringBuilder finalText = new StringBuilder();
+
+            foreach (RoleTextItem item in paragraphItems)
+            {
+                if (string.IsNullOrWhiteSpace(item.Text))
+                {
+                    finalText.AppendLine();
+                }
+                else
+                {
+                    var parts = new List<string>();
+                    parts.Add(item.Role);
+
+                    if (item.FeatureSelections != null && item.FeatureSelections.Count > 0)
+                    {
+                        foreach (var kvp in item.FeatureSelections)
+                        {
+                            if (kvp.Value != 0)
+                            {
+                                parts.Add($"{kvp.Key}={kvp.Value}");
+                            }
+                        }
+                    }
+
+                    parts.Add(item.Text);
+
+                    finalText.AppendLine(string.Join(角色_文本分隔符, parts));
+                }
+            }
+
+            string text = finalText.ToString();
+            if (text.Length > 0)
+            {
+                text = text.Substring(0, text.Length - Environment.NewLine.Length);
+            }
+
+            return text;
+        }
+
+        /// <summary>
+        /// 生成当前段落的文本。
+        /// </summary>
+        /// <returns>生成的当前段落文本。</returns>
+        private string generateCurrentParagraphText()
+        {
+            saveCurrentParagraphData();
+
+            if (_currentParagraphIndex >= 0 && _currentParagraphIndex < _allParagraphsData.Count)
+            {
+                return generateParagraphText(_allParagraphsData[_currentParagraphIndex]);
+            }
+
+            return string.Empty;
+        }
+
+        /// <summary>
+        /// 生成最终文本（所有段落）。
         /// </summary>
         /// <returns>生成的最终文本。</returns>
         private string generateFinalText()
         {
-            string outValue = string.Empty;
-
-            // 先保存当前段落的数据
             saveCurrentParagraphData();
 
-            // 遍历所有段落
+            List<string> paragraphTexts = new List<string>();
+
             for (int i = 0; i < _allParagraphsData.Count; i++)
             {
-                StringBuilder finalText = new StringBuilder();
-                List<RoleTextItem> paragraphItems = _allParagraphsData[i];
-
-                // 添加段落分隔符（第一个段落前不加）
-                if (i > 0)
+                string paragraphText = generateParagraphText(_allParagraphsData[i]);
+                if (string.IsNullOrEmpty(paragraphText) == false)
                 {
-                    finalText.Append(生成段落_分隔符);
+                    paragraphTexts.Add(paragraphText);
                 }
-
-                // 添加该段落的内容
-                foreach (RoleTextItem item in paragraphItems)
-                {
-                    if (string.IsNullOrWhiteSpace(item.Text))
-                    {
-                        // 保留空行
-                        finalText.AppendLine();
-                    }
-                    else
-                    {
-                        var parts = new List<string>();
-                        parts.Add(item.Role);
-
-                        // 添加特性选择信息（格式：特性名=值）
-                        if (item.FeatureSelections != null && item.FeatureSelections.Count > 0)
-                        {
-                            foreach (var kvp in item.FeatureSelections)
-                            {
-                                if (kvp.Value != 0) // 0表示"不选择"，跳过
-                                {
-                                    parts.Add($"{kvp.Key}={kvp.Value}");
-                                }
-                            }
-                        }
-
-                        parts.Add(item.Text);
-
-                        finalText.AppendLine(string.Join(角色_文本分隔符, parts));
-                    }
-                }
-
-                // 移除最后一个换行符
-                var text = finalText.ToString();
-                outValue += text.Substring(0, text.Length - (Environment.NewLine).Length);
             }
 
-            return outValue;
+            return string.Join(生成段落_分隔符, paragraphTexts);
         }
 
         /// <summary>
@@ -936,15 +963,25 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         }
 
         /// <summary>
-        /// 事件处理：点击"发送到下一步"按钮。
+        /// 事件处理：点击"发送所有段落到下一步"按钮。
         /// </summary>
         /// <param name="sender">发送者。</param>
         /// <param name="e">事件参数。</param>
         private void bt_发送到下一步_Click(object sender, EventArgs e)
         {
             string finalText = generateFinalText();
-            // 发送到下一个选项卡
             OnSwitchToNextPageRequested(finalText);
+        }
+
+        /// <summary>
+        /// 事件处理：点击"发送当前段落到下一步"按钮。
+        /// </summary>
+        /// <param name="sender">发送者。</param>
+        /// <param name="e">事件参数。</param>
+        private void bt_发送当前段落到下一步_Click(object sender, EventArgs e)
+        {
+            string currentText = generateCurrentParagraphText();
+            OnSwitchToNextPageRequested(currentText);
         }
 
         /// <summary>
@@ -1340,22 +1377,23 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         private void InitializeComponent()
         {
             this.dgv_角色和情绪指定 = new System.Windows.Forms.DataGridView();
-            this.bt_发送到下一步 = new System.Windows.Forms.Button();
+            this.bt_发送所有段落到下一步 = new System.Windows.Forms.Button();
             this.bt_清理文本 = new System.Windows.Forms.Button();
             this.bt_复制文本 = new System.Windows.Forms.Button();
             this.bt_粘贴文本 = new System.Windows.Forms.Button();
             this.bt_上一段 = new System.Windows.Forms.Button();
             this.bt_下一段 = new System.Windows.Forms.Button();
             this.cb_语音段 = new System.Windows.Forms.ComboBox();
+            this.bt_发送当前段落到下一步 = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.dgv_角色和情绪指定)).BeginInit();
             this.SuspendLayout();
-            //
+            // 
             // dgv_角色和情绪指定
-            //
+            // 
             this.dgv_角色和情绪指定.AllowUserToAddRows = false;
             this.dgv_角色和情绪指定.AllowUserToDeleteRows = false;
-            this.dgv_角色和情绪指定.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
-            | System.Windows.Forms.AnchorStyles.Left)
+            this.dgv_角色和情绪指定.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.dgv_角色和情绪指定.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.dgv_角色和情绪指定.Location = new System.Drawing.Point(5, 45);
@@ -1363,19 +1401,19 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.dgv_角色和情绪指定.RowTemplate.Height = 23;
             this.dgv_角色和情绪指定.Size = new System.Drawing.Size(1291, 568);
             this.dgv_角色和情绪指定.TabIndex = 0;
-            //
-            // bt_发送到下一步
-            //
-            this.bt_发送到下一步.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.bt_发送到下一步.Location = new System.Drawing.Point(1192, 619);
-            this.bt_发送到下一步.Name = "bt_发送到下一步";
-            this.bt_发送到下一步.Size = new System.Drawing.Size(104, 28);
-            this.bt_发送到下一步.TabIndex = 1;
-            this.bt_发送到下一步.Text = "发送到下一步";
-            this.bt_发送到下一步.UseVisualStyleBackColor = true;
-            //
+            // 
+            // bt_发送所有段落到下一步
+            // 
+            this.bt_发送所有段落到下一步.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.bt_发送所有段落到下一步.Location = new System.Drawing.Point(1132, 619);
+            this.bt_发送所有段落到下一步.Name = "bt_发送所有段落到下一步";
+            this.bt_发送所有段落到下一步.Size = new System.Drawing.Size(164, 28);
+            this.bt_发送所有段落到下一步.TabIndex = 1;
+            this.bt_发送所有段落到下一步.Text = "发送所有段落到下一步";
+            this.bt_发送所有段落到下一步.UseVisualStyleBackColor = true;
+            // 
             // bt_清理文本
-            //
+            // 
             this.bt_清理文本.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.bt_清理文本.Location = new System.Drawing.Point(5, 619);
             this.bt_清理文本.Name = "bt_清理文本";
@@ -1383,55 +1421,65 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.bt_清理文本.TabIndex = 2;
             this.bt_清理文本.Text = "清理文本";
             this.bt_清理文本.UseVisualStyleBackColor = true;
-            //
+            // 
             // bt_复制文本
-            //
+            // 
             this.bt_复制文本.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.bt_复制文本.Location = new System.Drawing.Point(1082, 619);
+            this.bt_复制文本.Location = new System.Drawing.Point(804, 619);
             this.bt_复制文本.Name = "bt_复制文本";
             this.bt_复制文本.Size = new System.Drawing.Size(104, 28);
             this.bt_复制文本.TabIndex = 3;
             this.bt_复制文本.Text = "复制文本";
             this.bt_复制文本.UseVisualStyleBackColor = true;
-            //
+            // 
             // bt_粘贴文本
-            //
+            // 
             this.bt_粘贴文本.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.bt_粘贴文本.Location = new System.Drawing.Point(972, 619);
+            this.bt_粘贴文本.Location = new System.Drawing.Point(694, 619);
             this.bt_粘贴文本.Name = "bt_粘贴文本";
             this.bt_粘贴文本.Size = new System.Drawing.Size(104, 28);
             this.bt_粘贴文本.TabIndex = 4;
             this.bt_粘贴文本.Text = "粘贴文本";
             this.bt_粘贴文本.UseVisualStyleBackColor = true;
-            //
+            // 
             // bt_上一段
-            //
+            // 
             this.bt_上一段.Location = new System.Drawing.Point(5, 16);
             this.bt_上一段.Name = "bt_上一段";
             this.bt_上一段.Size = new System.Drawing.Size(40, 23);
             this.bt_上一段.TabIndex = 5;
             this.bt_上一段.Text = "←";
             this.bt_上一段.UseVisualStyleBackColor = true;
-            //
+            // 
             // bt_下一段
-            //
+            // 
             this.bt_下一段.Location = new System.Drawing.Point(136, 16);
             this.bt_下一段.Name = "bt_下一段";
             this.bt_下一段.Size = new System.Drawing.Size(40, 23);
             this.bt_下一段.TabIndex = 6;
             this.bt_下一段.Text = "→";
             this.bt_下一段.UseVisualStyleBackColor = true;
-            //
+            // 
             // cb_语音段
-            //
+            // 
             this.cb_语音段.FormattingEnabled = true;
             this.cb_语音段.Location = new System.Drawing.Point(51, 18);
             this.cb_语音段.Name = "cb_语音段";
             this.cb_语音段.Size = new System.Drawing.Size(79, 20);
             this.cb_语音段.TabIndex = 7;
-            //
+            // 
+            // bt_发送当前段落到下一步
+            // 
+            this.bt_发送当前段落到下一步.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.bt_发送当前段落到下一步.Location = new System.Drawing.Point(962, 619);
+            this.bt_发送当前段落到下一步.Name = "bt_发送当前段落到下一步";
+            this.bt_发送当前段落到下一步.Size = new System.Drawing.Size(164, 28);
+            this.bt_发送当前段落到下一步.TabIndex = 1;
+            this.bt_发送当前段落到下一步.Text = "发送当前段落到下一步";
+            this.bt_发送当前段落到下一步.UseVisualStyleBackColor = true;
+            // 
             // RoleEmotionPanel
-            //
+            // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.Controls.Add(this.cb_语音段);
@@ -1440,16 +1488,18 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.Controls.Add(this.bt_粘贴文本);
             this.Controls.Add(this.bt_复制文本);
             this.Controls.Add(this.bt_清理文本);
-            this.Controls.Add(this.bt_发送到下一步);
+            this.Controls.Add(this.bt_发送当前段落到下一步);
+            this.Controls.Add(this.bt_发送所有段落到下一步);
             this.Controls.Add(this.dgv_角色和情绪指定);
             this.Name = "RoleEmotionPanel";
             this.Size = new System.Drawing.Size(1301, 652);
             ((System.ComponentModel.ISupportInitialize)(this.dgv_角色和情绪指定)).EndInit();
             this.ResumeLayout(false);
+
         }
 
         private System.Windows.Forms.DataGridView dgv_角色和情绪指定;
-        private System.Windows.Forms.Button bt_发送到下一步;
+        private System.Windows.Forms.Button bt_发送所有段落到下一步;
         private System.Windows.Forms.Button bt_清理文本;
         private System.Windows.Forms.Button bt_复制文本;
         private System.Windows.Forms.Button bt_粘贴文本;

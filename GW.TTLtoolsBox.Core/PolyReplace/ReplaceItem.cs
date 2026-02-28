@@ -120,18 +120,22 @@ namespace GW.TTLtoolsBox.Core.PolyReplace
         /// <summary>
         /// 更新替换的文本。
         /// </summary>
-        /// <param name="newReplaceText">新的替换文本。</param>
+        /// <param name="newReplaceText">新的替换文本，null表示选择"不替换"。</param>
         public void UpdateReplaceText(string newReplaceText)
         {
-            if (newReplaceText != null)
+            if (newReplaceText == null)
+            {
+                _selectedReplaceStringIndex = -1;
+            }
+            else
             {
                 var ps = getSelectedPolyphonicScheme();
                 var index = Array.FindIndex(ps.ReplaceStrings, s => s.Equals(newReplaceText) == true);
                 if (index >= 0) _selectedReplaceStringIndex = index;
                 else _selectedReplaceStringIndex = -1;
-
-                IsReplaceTextUpdated = true;
             }
+
+            IsReplaceTextUpdated = true;
         }
 
         #endregion
@@ -154,9 +158,8 @@ namespace GW.TTLtoolsBox.Core.PolyReplace
             if (polyphonicItems == null || polyphonicItems.Length == 0) throw new ArgumentNullException(nameof(polyphonicItems));
             if (currentSchemeName == null) throw new ArgumentNullException(nameof(currentSchemeName));
 
-            List <ReplaceItem> replaceItems = new List<ReplaceItem>();
+            List<ReplaceItem> replaceItems = new List<ReplaceItem>();
 
-            // 获取多音字替换方案索引
             int psIndex = -1;
             {
                 PolyphonicItem pi = new PolyphonicItem();
@@ -164,19 +167,33 @@ namespace GW.TTLtoolsBox.Core.PolyReplace
                 if (psIndex < 0) throw new Exception($"无法找到名称为 {currentSchemeName} 的多音字方案");
             }
 
-            // 生成替换项
+            var sortedPolyphonicItems = polyphonicItems
+                .Where(pi => !string.IsNullOrWhiteSpace(pi.OriginalText))
+                .OrderByDescending(pi => pi.OriginalText.Length)
+                .ToArray();
+
+            HashSet<int> occupiedPositions = new HashSet<int>();
+
+            foreach (var pi in sortedPolyphonicItems)
             {
-                foreach (var pi in polyphonicItems)
+                int startIndex = 0;
+                while (startIndex < targetText.Length)
                 {
-                    if (string.IsNullOrWhiteSpace(pi.OriginalText)) continue;
+                    int positionIndex = targetText.IndexOf(pi.OriginalText, startIndex);
+                    if (positionIndex == -1) break;
 
-                    int startIndex = 0;
-                    while (startIndex < targetText.Length)
+                    bool isOccupied = false;
+                    for (int i = positionIndex; i < positionIndex + pi.OriginalText.Length; i++)
                     {
-                        int positionIndex = targetText.IndexOf(pi.OriginalText, startIndex);
-                        if (positionIndex == -1) break;
+                        if (occupiedPositions.Contains(i))
+                        {
+                            isOccupied = true;
+                            break;
+                        }
+                    }
 
-                        // 创建ReplaceItem对象
+                    if (!isOccupied)
+                    {
                         ReplaceItem replaceItem = new ReplaceItem()
                         {
                             UsedPolyphonicItem = pi,
@@ -184,52 +201,47 @@ namespace GW.TTLtoolsBox.Core.PolyReplace
                             _selectedSchemeIndex = psIndex,
                         };
 
-                        // 提取上文、中文、下文
                         int preContextStart = Math.Max(0, positionIndex - _context_Max_Length);
                         int preContextEnd = positionIndex;
                         int targetEnd = positionIndex + pi.OriginalText.Length;
                         int postContextStart = targetEnd;
                         int postContextEnd = Math.Min(targetText.Length, targetEnd + _context_Max_Length);
 
-                        // 处理上文
                         string preContext = targetText.Substring(preContextStart, preContextEnd - preContextStart);
-                        // 检查上文是否有换行符
                         int preNewlineIndex = preContext.LastIndexOfAny(new char[] { '\n', '\r' });
                         if (preNewlineIndex >= 0)
                         {
                             preContext = preContext.Substring(preNewlineIndex + 1);
                         }
-                        // 检查上文长度是否超过上下文长度
                         if (preContextStart > 0 && preContext.Length == _context_Max_Length)
                         {
                             preContext = _more_Ellipsis_Text + preContext;
                         }
                         replaceItem.PreContextText = preContext;
 
-                        // 处理目标文本
                         replaceItem.TargetText = targetText.Substring(positionIndex, targetEnd - positionIndex);
 
-                        // 处理下文
                         string postContext = targetText.Substring(postContextStart, postContextEnd - postContextStart);
-                        // 检查下文是否有换行符
                         int postNewlineIndex = postContext.IndexOfAny(new char[] { '\n', '\r' });
                         if (postNewlineIndex >= 0)
                         {
                             postContext = postContext.Substring(0, postNewlineIndex);
                         }
-                        // 检查下文长度是否超过上下文长度
                         if (postContextEnd < targetText.Length && postContext.Length == _context_Max_Length)
                         {
                             postContext = postContext + _more_Ellipsis_Text;
                         }
                         replaceItem.PostContextText = postContext;
 
-                        // 添加到列表
                         replaceItems.Add(replaceItem);
 
-                        // 继续查找下一个匹配位置
-                        startIndex = positionIndex + pi.OriginalText.Length;
+                        for (int i = positionIndex; i < positionIndex + pi.OriginalText.Length; i++)
+                        {
+                            occupiedPositions.Add(i);
+                        }
                     }
+
+                    startIndex = positionIndex + 1;
                 }
             }
 

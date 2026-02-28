@@ -47,6 +47,18 @@ namespace GW.TTLtoolsBox.Core.Entity
         [DataMember(Name = "featureSelections")]
         public Dictionary<string, int> FeatureSelections { get; set; } = new Dictionary<string, int>();
 
+        /// <summary>
+        /// 获取或设置语速值（0表示使用各自朗读者的语速，>0表示实际语速）。
+        /// </summary>
+        [DataMember(Name = "speed")]
+        public int Speed { get; set; } = 0;
+
+        /// <summary>
+        /// 获取或设置音量值（0表示使用各自朗读者的音量，>0表示实际音量）。
+        /// </summary>
+        [DataMember(Name = "volume")]
+        public int Volume { get; set; } = 0;
+
         #endregion
 
         #endregion

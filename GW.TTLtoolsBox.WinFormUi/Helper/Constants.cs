@@ -23,12 +23,12 @@ namespace GW.TTLtoolsBox.WinFormUi.Helper
         /// <summary>
         /// 拆分文本时最小的文本长度。
         /// </summary>
-        public const uint 分割_最小长度 = 10;
+        public const uint 分割_最小长度 = 50;
 
         /// <summary>
         /// 拆分文本时使用的对话分隔符号。
         /// </summary>
-        public const string 对话_分割符号 = "「」";
+        public const string 对话_分割符号 = "“”「」";
 
         #endregion
 
@@ -102,6 +102,16 @@ namespace GW.TTLtoolsBox.WinFormUi.Helper
         public const string TTL角色预览声音_文本 = "你好，你喜欢我的声音吗？可能这样的声音不是很令你满意，不过你要知道，每种声音都有自己的用途。有些更适合于谈话的场景，而有些则适用于角色朗读。另外，选择声音时还需要注意甄别声音的情绪。";
 
         /// <summary>
+        /// TTL引擎请求超时时间（分钟）。
+        /// </summary>
+        public const int TTL引擎_请求超时分钟数 = 600;
+
+        /// <summary>
+        /// TTL引擎连接超时时间（秒）。
+        /// </summary>
+        public const int TTL引擎_连接超时秒数 = 30;
+
+        /// <summary>
         /// TTL引擎连接成功后验证间隔（秒）。
         /// </summary>
         public const int 连接成功_验证间隔秒数 = 60;
@@ -114,7 +124,16 @@ namespace GW.TTLtoolsBox.WinFormUi.Helper
         /// <summary>
         /// 表示"无"TTL方案的特定引擎ID。
         /// </summary>
-        public const string None_Engine_Id = "__NONE__";
+        public const string 无_引擎标识 = "__NONE__";
+
+        #endregion
+
+        #region 最近打开项目
+
+        /// <summary>
+        /// 最近打开项目的最大保存数量。
+        /// </summary>
+        public const int 最近打开项目_最大数量 = 10;
 
         #endregion
     }

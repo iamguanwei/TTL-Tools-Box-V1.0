@@ -2,6 +2,7 @@ using GW.TTLtoolsBox.Core.PolyReplace.Helper;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 
 namespace GW.TTLtoolsBox.Core.PolyReplace
 {
@@ -48,6 +49,8 @@ namespace GW.TTLtoolsBox.Core.PolyReplace
                 List<string> replaceStrList = base.ReplaceStrings.ToList();
 
                 List<List<string>> charPinyinList = new List<List<string>>();
+                bool hasPolyphonicChar = false;
+
                 foreach (char ch in originalText)
                 {
                     string[] pinyinArray = PinyinHelper.GetAllPinyinWithToneNumber(ch);
@@ -64,14 +67,22 @@ namespace GW.TTLtoolsBox.Core.PolyReplace
                         }
                         else
                         {
+                            hasPolyphonicChar = true;
                             charPinyinList.Add(distinctPinyins);
                         }
                     }
                 }
 
-                List<string> allCombinations = generatePinyinCombinations(charPinyinList, originalText);
-
-                replaceStrList.AddRange(allCombinations);
+                if (hasPolyphonicChar)
+                {
+                    List<string> allCombinations = generatePinyinCombinations(charPinyinList, originalText);
+                    replaceStrList.AddRange(allCombinations);
+                }
+                else
+                {
+                    string pinyinCombination = generateAllPinyinCombination(originalText);
+                    replaceStrList.Add(pinyinCombination);
+                }
 
                 base.ReplaceStrings = replaceStrList.Distinct().ToArray();
             }
@@ -175,6 +186,42 @@ namespace GW.TTLtoolsBox.Core.PolyReplace
                     generateCombinationsRecursive(charPinyinList, index + 1, newCombination, originalText, newPinyins, result);
                 }
             }
+        }
+
+        /// <summary>
+        /// 生成所有字符的拼音组合（用于无非多音字的情况）。
+        /// </summary>
+        /// <param name="originalText">原始文本。</param>
+        /// <returns>拼音组合字符串。</returns>
+        private string generateAllPinyinCombination(string originalText)
+        {
+            List<string> pinyins = new List<string>();
+            StringBuilder sb = new StringBuilder();
+
+            foreach (char ch in originalText)
+            {
+                string[] pinyinArray = PinyinHelper.GetAllPinyinWithToneNumber(ch);
+                if (pinyinArray == null || pinyinArray.Length == 0)
+                {
+                    if (pinyins.Count > 0)
+                    {
+                        sb.Append($"[{string.Join(" ", pinyins)}]");
+                        pinyins.Clear();
+                    }
+                    sb.Append(ch);
+                }
+                else
+                {
+                    pinyins.Add(pinyinArray[0]);
+                }
+            }
+
+            if (pinyins.Count > 0)
+            {
+                sb.Append($"[{string.Join(" ", pinyins)}]");
+            }
+
+            return sb.ToString();
         }
 
         #endregion

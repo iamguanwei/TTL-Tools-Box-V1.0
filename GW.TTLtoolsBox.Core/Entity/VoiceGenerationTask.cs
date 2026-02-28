@@ -50,10 +50,28 @@ namespace GW.TTLtoolsBox.Core.Entity
         public int Speed { get; set; } = 100;
 
         /// <summary>
+        /// 获取或设置音量。
+        /// </summary>
+        [DataMember(Name = "volume")]
+        public int Volume { get; set; } = 100;
+
+        /// <summary>
         /// 获取或设置空白时长（单位：秒）。
         /// </summary>
         [DataMember(Name = "spaceTime")]
         public float SpaceTime { get; set; } = 1f;
+
+        /// <summary>
+        /// 获取或设置是否为预览任务。
+        /// </summary>
+        [DataMember(Name = "isPreview")]
+        public bool IsPreview { get; set; } = false;
+
+        /// <summary>
+        /// 获取或设置预览任务对应的源名称。
+        /// </summary>
+        [DataMember(Name = "previewSourceName")]
+        public string PreviewSourceName { get; set; } = string.Empty;
 
         /// <summary>
         /// 获取或设置具体的任务项列表。

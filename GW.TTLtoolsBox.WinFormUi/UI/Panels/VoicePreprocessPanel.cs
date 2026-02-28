@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using GW.TTLtoolsBox.Core.FileAccesser;
-using GW.TTLtoolsBox.Core.SystemOption.TtlEngine;
+using GW.TTLtoolsBox.Core.TtlEngine;
 using GW.TTLtoolsBox.WinFormUi.Base;
 using GW.TTLtoolsBox.WinFormUi.Helper;
 using GW.TTLtoolsBox.WinFormUi.Manager;
@@ -231,15 +231,33 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.tb_语音生成预处理_最终文本.MaxLength = int.MaxValue;
 
             this.nud_语音生成预处理_语速设置.Minimum = 1;
-            this.nud_语音生成预处理_语速设置.Maximum = 100;
+            this.nud_语音生成预处理_语速设置.Maximum = 10000;
             this.nud_语音生成预处理_语速设置.Value = decimal.Parse(Setting.GetValue(this.nud_语音生成预处理_语速设置.Name, "100"));
 
             this.nud_语音生成预处理_空白时长.Value = decimal.Parse(Setting.GetValue(this.nud_语音生成预处理_空白时长.Name, "1"));
 
-            this.cb_语音生成预处理_默认角色设置.DropDownStyle = ComboBoxStyle.DropDownList;
+            this.cb_语音生成预处理_默认朗读者设置.DropDownStyle = ComboBoxStyle.DropDownList;
+            this.cb_语音生成预处理_默认朗读者设置.Format += cb_语音生成预处理_默认朗读者设置_Format;
+
+            bool useGlobalSpeed = bool.Parse(Setting.GetValue(nameof(cb_语音生成预处理_指定全局语速), false.ToString()));
+            this.cb_语音生成预处理_指定全局语速.Checked = useGlobalSpeed;
+            this.cb_语音生成预处理_指定全局语速.CheckedChanged += cb_语音生成预处理_指定全局语速_CheckedChanged;
 
             this.nud_语音生成预处理_语速设置.ValueChanged += nud_语音生成预处理_语速设置_ValueChanged;
-            this.cb_语音生成预处理_默认角色设置.SelectedIndexChanged += cb_语音生成预处理_默认角色设置_SelectedIndexChanged;
+            this.cb_语音生成预处理_默认朗读者设置.SelectedIndexChanged += cb_语音生成预处理_默认角色设置_SelectedIndexChanged;
+
+            this.nud_语音生成_全局音量.Minimum = 1;
+            this.nud_语音生成_全局音量.Maximum = 10000;
+            this.nud_语音生成_全局音量.Value = decimal.Parse(Setting.GetValue(this.nud_语音生成_全局音量.Name, "100"));
+
+            bool useGlobalVolume = bool.Parse(Setting.GetValue(nameof(cb_语音生成_指定全局音量), false.ToString()));
+            this.cb_语音生成_指定全局音量.Checked = useGlobalVolume;
+            this.cb_语音生成_指定全局音量.CheckedChanged += cb_语音生成_指定全局音量_CheckedChanged;
+
+            this.nud_语音生成_全局音量.ValueChanged += nud_语音生成_全局音量_ValueChanged;
+
+            update全局语速控件状态();
+            update全局音量控件状态();
 
             // 加载默认角色
             load语音生成预处理默认角色设置();
@@ -350,7 +368,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         {
             Action act = () =>
             {
-                this.cb_语音生成预处理_默认角色设置.Items.Clear();
+                this.cb_语音生成预处理_默认朗读者设置.Items.Clear();
 
                 var currentEngine = TtlSchemeController?.CurrentEngineConnector;
                 if (currentEngine != null)
@@ -360,14 +378,14 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                     {
                         foreach (var speaker in speakers)
                         {
-                            this.cb_语音生成预处理_默认角色设置.Items.Add(speaker);
+                            this.cb_语音生成预处理_默认朗读者设置.Items.Add(speaker);
                         }
 
-                        string key = $"{this.cb_语音生成预处理_默认角色设置.Name}_{currentEngine.Id}";
+                        string key = $"{this.cb_语音生成预处理_默认朗读者设置.Name}_{currentEngine.Id}";
                         string savedSourceName = Setting.GetValue(key, string.Empty);
                         if (string.IsNullOrEmpty(savedSourceName))
                         {
-                            key = $"{this.cb_语音生成预处理_默认角色设置.Name}_{currentEngine.Name}";
+                            key = $"{this.cb_语音生成预处理_默认朗读者设置.Name}_{currentEngine.Name}";
                             savedSourceName = Setting.GetValue(key, string.Empty);
                         }
 
@@ -376,16 +394,16 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                             var savedSpeaker = speakers.FirstOrDefault(s => s.SourceName == savedSourceName);
                             if (savedSpeaker != null)
                             {
-                                this.cb_语音生成预处理_默认角色设置.SelectedItem = savedSpeaker;
+                                this.cb_语音生成预处理_默认朗读者设置.SelectedItem = savedSpeaker;
                             }
                             else
                             {
-                                this.cb_语音生成预处理_默认角色设置.SelectedIndex = 0;
+                                this.cb_语音生成预处理_默认朗读者设置.SelectedIndex = 0;
                             }
                         }
                         else
                         {
-                            this.cb_语音生成预处理_默认角色设置.SelectedIndex = 0;
+                            this.cb_语音生成预处理_默认朗读者设置.SelectedIndex = 0;
                         }
                     }
                 }
@@ -514,7 +532,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             {
                 if (string.IsNullOrWhiteSpace(this.tb_语音生成预处理_最终文本.Text) == false)
                 {
-                    if (this.cb_语音生成预处理_默认角色设置.SelectedItem is SpeakerInfo defaultSpeaker)
+                    if (this.cb_语音生成预处理_默认朗读者设置.SelectedItem is SpeakerInfo defaultSpeaker)
                     {
                         string defaultRole = defaultSpeaker.SourceName;
 
@@ -636,9 +654,18 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                             }
 
                             // 完成最终的文本
+                            int globalSpeed = this.cb_语音生成预处理_指定全局语速.Checked
+                                ? (int)this.nud_语音生成预处理_语速设置.Value
+                                : 0;
+
+                            int globalVolume = this.cb_语音生成_指定全局音量.Checked
+                                ? (int)this.nud_语音生成_全局音量.Value
+                                : 0;
+
                             string textToSend =
                                 $"{角色_文本分隔符}{saveFile}" +
-                                $"{角色_文本分隔符}{this.nud_语音生成预处理_语速设置.Value}" +
+                                $"{角色_文本分隔符}{globalSpeed}" +
+                                $"{角色_文本分隔符}{globalVolume}" +
                                 $"{角色_文本分隔符}{this.nud_语音生成预处理_空白时长.Value}" +
                                 $"{Environment.NewLine}" +
                                 $"{sendProcessedText}";
@@ -677,11 +704,76 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         private void cb_语音生成预处理_默认角色设置_SelectedIndexChanged(object sender, EventArgs e)
         {
             var currentEngine = TtlSchemeController?.CurrentEngineConnector;
-            if (currentEngine != null && this.cb_语音生成预处理_默认角色设置.SelectedItem is SpeakerInfo speaker)
+            if (currentEngine != null && this.cb_语音生成预处理_默认朗读者设置.SelectedItem is SpeakerInfo speaker)
             {
-                string key = $"{this.cb_语音生成预处理_默认角色设置.Name}_{currentEngine.Id}";
+                string key = $"{this.cb_语音生成预处理_默认朗读者设置.Name}_{currentEngine.Id}";
                 Setting.SetValue(key, speaker.SourceName);
             }
+        }
+
+        /// <summary>
+        /// 更新全局语速控件的启用状态。
+        /// </summary>
+        private void update全局语速控件状态()
+        {
+            bool useGlobalSpeed = this.cb_语音生成预处理_指定全局语速.Checked;
+            this.nud_语音生成预处理_语速设置.Enabled = useGlobalSpeed;
+            this.lab_语音生成预处理_全局语速百分号.Enabled = useGlobalSpeed;
+        }
+
+        /// <summary>
+        /// 更新全局音量控件的启用状态。
+        /// </summary>
+        private void update全局音量控件状态()
+        {
+            bool useGlobalVolume = this.cb_语音生成_指定全局音量.Checked;
+            this.nud_语音生成_全局音量.Enabled = useGlobalVolume;
+            this.label1.Enabled = useGlobalVolume;
+        }
+
+        /// <summary>
+        /// 事件处理：默认朗读者下拉列表格式化显示，只显示源名称。
+        /// </summary>
+        /// <param name="sender">发送者。</param>
+        /// <param name="e">事件参数。</param>
+        private void cb_语音生成预处理_默认朗读者设置_Format(object sender, ListControlConvertEventArgs e)
+        {
+            if (e.ListItem is SpeakerInfo speaker)
+            {
+                e.Value = speaker.SourceName;
+            }
+        }
+
+        /// <summary>
+        /// 事件处理：指定全局语速复选框状态变更。
+        /// </summary>
+        /// <param name="sender">发送者。</param>
+        /// <param name="e">事件参数。</param>
+        private void cb_语音生成预处理_指定全局语速_CheckedChanged(object sender, EventArgs e)
+        {
+            Setting.SetValue(nameof(cb_语音生成预处理_指定全局语速), this.cb_语音生成预处理_指定全局语速.Checked.ToString());
+            update全局语速控件状态();
+        }
+
+        /// <summary>
+        /// 事件处理：指定全局音量复选框状态变更。
+        /// </summary>
+        /// <param name="sender">发送者。</param>
+        /// <param name="e">事件参数。</param>
+        private void cb_语音生成_指定全局音量_CheckedChanged(object sender, EventArgs e)
+        {
+            Setting.SetValue(nameof(cb_语音生成_指定全局音量), this.cb_语音生成_指定全局音量.Checked.ToString());
+            update全局音量控件状态();
+        }
+
+        /// <summary>
+        /// 事件处理：全局音量设置值变更。
+        /// </summary>
+        /// <param name="sender">发送者。</param>
+        /// <param name="e">事件参数。</param>
+        private void nud_语音生成_全局音量_ValueChanged(object sender, EventArgs e)
+        {
+            Setting.SetValue(this.nud_语音生成_全局音量.Name, this.nud_语音生成_全局音量.Value.ToString());
         }
 
         #endregion

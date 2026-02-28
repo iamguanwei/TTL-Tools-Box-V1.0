@@ -8,8 +8,8 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using GW.TTLtoolsBox.Core.FileAccesser;
-using GW.TTLtoolsBox.Core.SystemOption.Helper;
-using GW.TTLtoolsBox.Core.SystemOption.TtlEngine;
+using GW.TTLtoolsBox.Core.TtlEngine;
+using GW.TTLtoolsBox.Core.TtlEngine.Helper;
 using GW.TTLtoolsBox.WinFormUi.Base;
 using GW.TTLtoolsBox.WinFormUi.Helper;
 using GW.TTLtoolsBox.WinFormUi.Manager;
@@ -302,6 +302,16 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// </summary>
         private string _tempFolder = 临时_工作目录;
 
+        /// <summary>
+        /// 最近的任务提交信息列表。
+        /// </summary>
+        private readonly List<string> _recentSubmitInfos = new List<string>();
+
+        /// <summary>
+        /// 悬浮提示工具。
+        /// </summary>
+        private ToolTip _submitInfoToolTip;
+
         #endregion
 
         #region UI初始化
@@ -323,10 +333,12 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             _voiceGenerationTaskQueue.RequestEngineConnection += VoiceGenerationTaskQueue_RequestEngineConnection;
             _voiceGenerationTaskQueue.PreviewTaskCompleted += VoiceGenerationTaskQueue_PreviewTaskCompleted;
             _voiceGenerationTaskQueue.TaskSubmitInfo += VoiceGenerationTaskQueue_TaskSubmitInfo;
+            _voiceGenerationTaskQueue.GetKeepTempFiles = () => cb_语音生成_保留临时文件.Checked;
 
             dgv_语音生成_任务清单.AutoGenerateColumns = false;
             dgv_语音生成_任务清单.AllowUserToAddRows = false;
             dgv_语音生成_任务清单.DataSource = _voiceGenerationTaskQueue.Tasks;
+            dgv_语音生成_任务清单.CellFormatting += dgv_语音生成_任务清单_CellFormatting;
 
             dgv_语音生成_任务清单.Columns.Clear();
             dgv_语音生成_任务清单.Columns.Add(new DataGridViewTextBoxColumn { Name = "Id", DataPropertyName = "Id", HeaderText = "编号", Width = 150, ReadOnly = true });
@@ -335,6 +347,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             dgv_语音生成_任务清单.Columns.Add(new DataGridViewTextBoxColumn { Name = "ProgressDetail", DataPropertyName = "ProgressDetail", HeaderText = "进度详情", Width = 200, ReadOnly = true });
             dgv_语音生成_任务清单.Columns.Add(new DataGridViewTextBoxColumn { Name = "FileName", DataPropertyName = "FileName", HeaderText = "保存位置", Width = 150, ReadOnly = true });
             dgv_语音生成_任务清单.Columns.Add(new DataGridViewTextBoxColumn { Name = "ShowSpeed", DataPropertyName = "ShowSpeed", HeaderText = "语速", Width = 80, ReadOnly = true });
+            dgv_语音生成_任务清单.Columns.Add(new DataGridViewTextBoxColumn { Name = "ShowVolume", DataPropertyName = "ShowVolume", HeaderText = "音量", Width = 80, ReadOnly = true });
             dgv_语音生成_任务清单.Columns.Add(new DataGridViewTextBoxColumn { Name = "ShowSpaceTime", DataPropertyName = "ShowSpaceTime", HeaderText = "空白时长", Width = 80, ReadOnly = true });
             var textColumn = new DataGridViewTextBoxColumn { Name = "Text", DataPropertyName = "Text", HeaderText = "文本预览", MinimumWidth = 300, Width = 300, ReadOnly = true };
             textColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
@@ -350,6 +363,20 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             // 加载"自动开始任务"复选框状态
             bool autoStart = bool.Parse(Setting.GetValue(nameof(cb_语音生成_自动开始任务), true.ToString()));
             cb_语音生成_自动开始任务.Checked = autoStart;
+
+            // 加载"保留临时文件"复选框状态
+            bool keepTempFiles = bool.Parse(Setting.GetValue(nameof(cb_语音生成_保留临时文件), false.ToString()));
+            cb_语音生成_保留临时文件.Checked = keepTempFiles;
+
+            // 初始化悬浮提示工具
+            _submitInfoToolTip = new ToolTip();
+            _submitInfoToolTip.InitialDelay = 0;
+            _submitInfoToolTip.AutoPopDelay = 32767;
+            _submitInfoToolTip.ReshowDelay = 0;
+            _submitInfoToolTip.ShowAlways = true;
+
+            // 绑定鼠标悬浮事件
+            lab_语音生成_任务提交信息.MouseHover += lab_语音生成_任务提交信息_MouseHover;
         }
 
         #endregion
@@ -393,6 +420,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 Invoke(new Action(() => VoiceGenerationTaskQueue_TaskProgressUpdated(sender, e)));
                 return;
             }
+            OnProjectModified();
             refresh语音生成任务清单DataGridView();
         }
 
@@ -432,7 +460,33 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 Invoke(new Action(() => VoiceGenerationTaskQueue_TaskSubmitInfo(sender, e)));
                 return;
             }
-            this.lab_语音生成_任务提交信息.Text = $"正在提交任务 {e.TaskId} 第 {e.ItemIndex} 项：{e.TextPreview}";
+            string textPreview = e.TextPreview ?? string.Empty;
+            string submitInfo = $"[{DateTime.Now:HH:mm:ss}] {e.TaskId} - 提交第{e.ItemIndex}段，{textPreview}";
+            this.lab_语音生成_任务提交信息.Text = submitInfo;
+
+            // 添加到历史记录列表末尾
+            _recentSubmitInfos.Add(submitInfo);
+
+            // 保持列表最多10条记录
+            if (_recentSubmitInfos.Count > 10)
+            {
+                _recentSubmitInfos.RemoveAt(0);
+            }
+        }
+
+        /// <summary>
+        /// 事件处理：任务提交信息标签鼠标悬浮。
+        /// </summary>
+        private void lab_语音生成_任务提交信息_MouseHover(object sender, EventArgs e)
+        {
+            if (_recentSubmitInfos.Count == 0)
+            {
+                _submitInfoToolTip.SetToolTip(lab_语音生成_任务提交信息, "暂无任务提交记录");
+                return;
+            }
+
+            string toolTipText = string.Join(Environment.NewLine, _recentSubmitInfos);
+            _submitInfoToolTip.SetToolTip(lab_语音生成_任务提交信息, toolTipText);
         }
 
         /// <summary>
@@ -449,6 +503,14 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         private void cb_语音生成_自动开始任务_CheckedChanged(object sender, EventArgs e)
         {
             Setting.SetValue(nameof(cb_语音生成_自动开始任务), cb_语音生成_自动开始任务.Checked.ToString());
+        }
+
+        /// <summary>
+        /// 事件处理：保留临时文件复选框状态变更。
+        /// </summary>
+        private void cb_语音生成_保留临时文件_CheckedChanged(object sender, EventArgs e)
+        {
+            Setting.SetValue(nameof(cb_语音生成_保留临时文件), cb_语音生成_保留临时文件.Checked.ToString());
         }
 
         /// <summary>
@@ -761,20 +823,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 if (hasRunningTask)
                 {
                     _voiceGenerationTaskQueue.Stop();
-                    Task.Run(async () =>
-                    {
-                        int waitCount = 0;
-                        while (_voiceGenerationTaskQueue.IsRunning && waitCount < 50)
-                        {
-                            await Task.Delay(100);
-                            waitCount++;
-                        }
-
-                        this.Invoke(new Action(() =>
-                        {
-                            deleteTasksAndCleanup(tasksToDelete);
-                        }));
-                    });
+                    deleteTasksAndCleanup(tasksToDelete);
                 }
                 else
                 {
@@ -964,6 +1013,74 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         }
 
         /// <summary>
+        /// 事件处理：单元格格式化（设置行颜色）。
+        /// </summary>
+        private void dgv_语音生成_任务清单_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.RowIndex >= dgv_语音生成_任务清单.Rows.Count)
+                return;
+
+            var row = dgv_语音生成_任务清单.Rows[e.RowIndex];
+            if (row.DataBoundItem is VoiceGenerationTask task)
+            {
+                bool isSelected = row.Selected;
+
+                switch (task.Status)
+                {
+                    case VoiceGenerationTaskStatus.正在生成:
+                        if (isSelected)
+                        {
+                            row.DefaultCellStyle.SelectionBackColor = Color.FromArgb(84, 130, 53);
+                        }
+                        else
+                        {
+                            row.DefaultCellStyle.BackColor = Color.FromArgb(154, 230, 154);
+                        }
+                        row.DefaultCellStyle.ForeColor = dgv_语音生成_任务清单.DefaultCellStyle.ForeColor;
+                        row.DefaultCellStyle.SelectionForeColor = dgv_语音生成_任务清单.DefaultCellStyle.SelectionForeColor;
+                        break;
+                    case VoiceGenerationTaskStatus.排队中:
+                        if (isSelected)
+                        {
+                            row.DefaultCellStyle.SelectionBackColor = Color.FromArgb(204, 153, 0);
+                        }
+                        else
+                        {
+                            row.DefaultCellStyle.BackColor = Color.FromArgb(252, 237, 124);
+                        }
+                        row.DefaultCellStyle.ForeColor = dgv_语音生成_任务清单.DefaultCellStyle.ForeColor;
+                        row.DefaultCellStyle.SelectionForeColor = dgv_语音生成_任务清单.DefaultCellStyle.SelectionForeColor;
+                        break;
+                    case VoiceGenerationTaskStatus.已完成:
+                        if (isSelected)
+                        {
+                            row.DefaultCellStyle.SelectionForeColor = Color.FromArgb(191, 191, 191);
+                        }
+                        else
+                        {
+                            row.DefaultCellStyle.ForeColor = Color.FromArgb(93, 93, 93);
+                        }
+                        row.DefaultCellStyle.BackColor = dgv_语音生成_任务清单.DefaultCellStyle.BackColor;
+                        row.DefaultCellStyle.SelectionBackColor = dgv_语音生成_任务清单.DefaultCellStyle.SelectionBackColor;
+                        break;
+                    case VoiceGenerationTaskStatus.生成失败:
+                        row.DefaultCellStyle.ForeColor = Color.FromArgb(191, 0, 0);
+                        row.DefaultCellStyle.SelectionForeColor = dgv_语音生成_任务清单.DefaultCellStyle.SelectionForeColor;
+                        row.DefaultCellStyle.BackColor = dgv_语音生成_任务清单.DefaultCellStyle.BackColor;
+                        row.DefaultCellStyle.SelectionBackColor = dgv_语音生成_任务清单.DefaultCellStyle.SelectionBackColor;
+                        break;
+                    case VoiceGenerationTaskStatus.未开始:
+                    default:
+                        row.DefaultCellStyle.BackColor = dgv_语音生成_任务清单.DefaultCellStyle.BackColor;
+                        row.DefaultCellStyle.SelectionBackColor = dgv_语音生成_任务清单.DefaultCellStyle.SelectionBackColor;
+                        row.DefaultCellStyle.ForeColor = dgv_语音生成_任务清单.DefaultCellStyle.ForeColor;
+                        row.DefaultCellStyle.SelectionForeColor = dgv_语音生成_任务清单.DefaultCellStyle.SelectionForeColor;
+                        break;
+                }
+            }
+        }
+
+        /// <summary>
         /// 事件处理：点击"打开临时目录"按钮。
         /// </summary>
         private void bt_语音生成_打开临时目录_Click(object sender, EventArgs e)
@@ -986,6 +1103,11 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 {
                     _tempFolder = folderBrowserDialog.SelectedPath;
                     Setting.SetValue(nameof(临时_工作目录), _tempFolder);
+
+                    if (_voiceGenerationTaskQueue != null)
+                    {
+                        _voiceGenerationTaskQueue.TempFolder = _tempFolder;
+                    }
                 }
             }
         }
@@ -1260,11 +1382,11 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         {
             if (string.IsNullOrWhiteSpace(text) == false)
             {
-                // 剥离公共参数
                 string folderPath = null;
                 string mFileName = null;
                 string eFileName = null;
                 int speed = -1;
+                int volume = -1;
                 float spaceTime = -1f;
                 {
                     int paramIndex = text.IndexOf(Environment.NewLine);
@@ -1274,13 +1396,26 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                         if (paramLine.StartsWith(角色_文本分隔符) == true)
                         {
                             var paramStrArray = paramLine.Split(new string[] { 角色_文本分隔符 }, StringSplitOptions.RemoveEmptyEntries);
-                            if (paramStrArray.Length >= 3)
+                            if (paramStrArray.Length >= 4)
                             {
                                 folderPath = Path.GetDirectoryName(paramStrArray[0]);
                                 mFileName = Path.GetFileNameWithoutExtension(paramStrArray[0]);
                                 eFileName = Path.GetExtension(paramStrArray[0]);
 
                                 speed = int.Parse(paramStrArray[1]);
+                                volume = int.Parse(paramStrArray[2]);
+                                spaceTime = float.Parse(paramStrArray[3]);
+
+                                text = text.Substring(paramIndex + 2);
+                            }
+                            else if (paramStrArray.Length >= 3)
+                            {
+                                folderPath = Path.GetDirectoryName(paramStrArray[0]);
+                                mFileName = Path.GetFileNameWithoutExtension(paramStrArray[0]);
+                                eFileName = Path.GetExtension(paramStrArray[0]);
+
+                                speed = int.Parse(paramStrArray[1]);
+                                volume = 0;
                                 spaceTime = float.Parse(paramStrArray[2]);
 
                                 text = text.Substring(paramIndex + 2);
@@ -1289,32 +1424,26 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                     }
                 }
 
-                // 创建任务
+                if (folderPath != null &&
+                    mFileName != null &&
+                    eFileName != null &&
+                    speed >= 0 &&
+                    volume >= 0 &&
+                    spaceTime >= 0)
                 {
-                    if (folderPath != null &&
-                        mFileName != null &&
-                        eFileName != null &&
-                        speed > 0 &&
-                        spaceTime >= 0)
+                    string[] paragraphArray = text.Split(new string[] { 生成段落_分隔符 }, StringSplitOptions.RemoveEmptyEntries);
+
+                    int fileCountMax = paragraphArray.Length.ToString().Length;
+                    bool isSingleTask = paragraphArray.Length == 1;
+
+                    if (isSingleTask)
                     {
-                        string[] paragraphArray = text.Split(new string[] { 生成段落_分隔符 }, StringSplitOptions.RemoveEmptyEntries);
-
-                        int fileCountMax = paragraphArray.Length.ToString().Length;
-                        int fileCount = 1;
-                        {
-                            var strArray = FileHelper.SplitTrailingNumber(mFileName);
-                            if (strArray != null && strArray.Length > 0)
-                            {
-                                mFileName = strArray[0];
-                                if (strArray.Length > 1) fileCount = int.Parse(strArray[1]);
-                            }
-                        }
-
                         foreach (var parapraph in paragraphArray)
                         {
                             VoiceGenerationTask task = new VoiceGenerationTask();
-                            task.SaveFile = Path.Combine(folderPath, $"{mFileName}{FileHelper.PadNumber(fileCount++, fileCountMax)}{eFileName}");
+                            task.SaveFile = Path.Combine(folderPath, $"{mFileName}{eFileName}");
                             task.Speed = speed;
+                            task.Volume = volume;
                             task.SpaceTime = spaceTime;
 
                             if (cb_语音生成_自动开始任务.Checked)
@@ -1333,16 +1462,13 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                                     var itemStrArray = line.Split(new string[] { 角色_文本分隔符 }, StringSplitOptions.RemoveEmptyEntries);
                                     if (itemStrArray.Length >= 2)
                                     {
-                                        // 第一个元素是角色
                                         SpeakerInfo speakerInfo = FindSpeaker?.Invoke(itemStrArray[0]);
                                         Dictionary<string, int> featureSelections = new Dictionary<string, int>();
                                         string lineText = string.Empty;
 
-                                        // 解析中间的特性键值对，最后一个元素是文本
                                         for (int j = 1; j < itemStrArray.Length; j++)
                                         {
                                             string part = itemStrArray[j];
-                                            // 检查是否是特性键值对（格式：特性名=值）
                                             bool isFeature = false;
                                             if (part.Contains("="))
                                             {
@@ -1350,7 +1476,6 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                                                 if (keyValue.Length == 2)
                                                 {
                                                     string featureName = keyValue[0];
-                                                    // 检查是否是已知特性
                                                     bool isKnownFeature = false;
                                                     var currentEngine = TtlSchemeController?.CurrentEngineConnector;
                                                     if (currentEngine != null)
@@ -1366,7 +1491,6 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                                                     }
                                                     else
                                                     {
-                                                        // 备用方案：使用硬编码的特性名称列表
                                                         string[] knownFeatures = { "方言", "情感风格", "场景" };
                                                         isKnownFeature = knownFeatures.Contains(featureName);
                                                     }
@@ -1381,15 +1505,12 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
 
                                             if (!isFeature)
                                             {
-                                                // 不是特性键值对，作为文本内容的一部分
                                                 lineText = string.IsNullOrEmpty(lineText) ? part : lineText + 角色_文本分隔符 + part;
                                             }
                                         }
 
-                                        // 如果没有解析到文本
                                         if (string.IsNullOrEmpty(lineText))
                                         {
-                                            // 找到最后一个不是特性键值对的元素作为文本
                                             for (int k = itemStrArray.Length - 1; k >= 1; k--)
                                             {
                                                 string lastPart = itemStrArray[k];
@@ -1429,13 +1550,17 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
 
                                         if (speakerInfo != null && string.IsNullOrWhiteSpace(lineText) == false)
                                         {
-                                            taskItems.Add(new VoiceGenerationTaskItem
+                                            VoiceGenerationTaskItem item = new VoiceGenerationTaskItem
                                             {
-                                                TempFile = Path.Combine(_tempFolder, $"temp_{task.Id}_{taskItems.Count + 1}.wav"),
                                                 Speaker = speakerInfo,
                                                 Text = lineText,
-                                                FeatureSelections = featureSelections
-                                            });
+                                                FeatureSelections = featureSelections,
+                                                Speed = speakerInfo?.Speed ?? 100,
+                                                Volume = speakerInfo?.Volume ?? 100
+                                            };
+                                            item.SetTempFile(_tempFolder, task.Id, (uint)(taskItems.Count + 1));
+
+                                            taskItems.Add(item);
                                         }
                                     }
                                 }
@@ -1450,6 +1575,177 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                                 task.Items = taskItems.ToArray();
                                 _voiceGenerationTaskQueue.AddTask(task);
                             }
+                        }
+                    }
+                    else
+                    {
+                        int fileCount = 1;
+                        string baseFileName = mFileName;
+                        int userDigits = 0;
+                        bool hasTrailingNumber = false;
+
+                        var strArray = FileHelper.SplitTrailingNumber(mFileName);
+                        if (strArray != null && strArray.Length > 1)
+                        {
+                            baseFileName = strArray[0];
+                            fileCount = int.Parse(strArray[1]);
+                            userDigits = strArray[1].Length;
+                            hasTrailingNumber = true;
+                        }
+
+                        int digitCount = Math.Max(userDigits, fileCountMax);
+
+                        int taskIndex = 0;
+                        foreach (var parapraph in paragraphArray)
+                        {
+                            VoiceGenerationTask task = new VoiceGenerationTask();
+
+                            string fileNameSuffix;
+                            if (taskIndex == 0 && !hasTrailingNumber)
+                            {
+                                fileNameSuffix = string.Empty;
+                            }
+                            else
+                            {
+                                fileNameSuffix = FileHelper.PadNumber(fileCount++, digitCount);
+                            }
+
+                            task.SaveFile = Path.Combine(folderPath, $"{baseFileName}{fileNameSuffix}{eFileName}");
+                            task.Speed = speed;
+                            task.Volume = volume;
+                            task.SpaceTime = spaceTime;
+
+                            if (cb_语音生成_自动开始任务.Checked)
+                            {
+                                task.Status = VoiceGenerationTaskStatus.排队中;
+                            }
+
+                            List<VoiceGenerationTaskItem> taskItems = new List<VoiceGenerationTaskItem>();
+                            string[] lineArray = parapraph.Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
+
+                            for (int i = 0; i < lineArray.Length; i++)
+                            {
+                                var line = lineArray[i];
+                                if (string.IsNullOrWhiteSpace(line) == false)
+                                {
+                                    var itemStrArray = line.Split(new string[] { 角色_文本分隔符 }, StringSplitOptions.RemoveEmptyEntries);
+                                    if (itemStrArray.Length >= 2)
+                                    {
+                                        SpeakerInfo speakerInfo = FindSpeaker?.Invoke(itemStrArray[0]);
+                                        Dictionary<string, int> featureSelections = new Dictionary<string, int>();
+                                        string lineText = string.Empty;
+
+                                        for (int j = 1; j < itemStrArray.Length; j++)
+                                        {
+                                            string part = itemStrArray[j];
+                                            bool isFeature = false;
+                                            if (part.Contains("="))
+                                            {
+                                                var keyValue = part.Split(new char[] { '=' }, 2);
+                                                if (keyValue.Length == 2)
+                                                {
+                                                    string featureName = keyValue[0];
+                                                    bool isKnownFeature = false;
+                                                    var currentEngine = TtlSchemeController?.CurrentEngineConnector;
+                                                    if (currentEngine != null)
+                                                    {
+                                                        foreach (var def in currentEngine.FeatureDefinitions)
+                                                        {
+                                                            if (def.Name == featureName)
+                                                            {
+                                                                isKnownFeature = true;
+                                                                break;
+                                                            }
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        string[] knownFeatures = { "方言", "情感风格", "场景" };
+                                                        isKnownFeature = knownFeatures.Contains(featureName);
+                                                    }
+
+                                                    if (isKnownFeature && int.TryParse(keyValue[1], out int value))
+                                                    {
+                                                        isFeature = true;
+                                                        featureSelections[featureName] = value;
+                                                    }
+                                                }
+                                            }
+
+                                            if (!isFeature)
+                                            {
+                                                lineText = string.IsNullOrEmpty(lineText) ? part : lineText + 角色_文本分隔符 + part;
+                                            }
+                                        }
+
+                                        if (string.IsNullOrEmpty(lineText))
+                                        {
+                                            for (int k = itemStrArray.Length - 1; k >= 1; k--)
+                                            {
+                                                string lastPart = itemStrArray[k];
+                                                bool isFeaturePart = false;
+                                                if (lastPart.Contains("="))
+                                                {
+                                                    var kv = lastPart.Split(new char[] { '=' }, 2);
+                                                    if (kv.Length == 2)
+                                                    {
+                                                        string fname = kv[0];
+                                                        var currentEngine2 = TtlSchemeController?.CurrentEngineConnector;
+                                                        if (currentEngine2 != null)
+                                                        {
+                                                            foreach (var def in currentEngine2.FeatureDefinitions)
+                                                            {
+                                                                if (def.Name == fname)
+                                                                {
+                                                                    isFeaturePart = true;
+                                                                    break;
+                                                                }
+                                                            }
+                                                        }
+                                                        else
+                                                        {
+                                                            string[] knownFeatures = { "方言", "情感风格", "场景" };
+                                                            isFeaturePart = knownFeatures.Contains(fname);
+                                                        }
+                                                    }
+                                                }
+                                                if (!isFeaturePart)
+                                                {
+                                                    lineText = lastPart;
+                                                    break;
+                                                }
+                                            }
+                                        }
+
+                                        if (speakerInfo != null && string.IsNullOrWhiteSpace(lineText) == false)
+                                        {
+                                            VoiceGenerationTaskItem item = new VoiceGenerationTaskItem
+                                            {
+                                                Speaker = speakerInfo,
+                                                Text = lineText,
+                                                FeatureSelections = featureSelections,
+                                                Speed = speakerInfo?.Speed ?? 100,
+                                                Volume = speakerInfo?.Volume ?? 100
+                                            };
+                                            item.SetTempFile(_tempFolder, task.Id, (uint)(taskItems.Count + 1));
+
+                                            taskItems.Add(item);
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    if (taskItems.Count > 0) taskItems.Last().EndNewLine++;
+                                }
+                            }
+
+                            if (taskItems.Count > 0)
+                            {
+                                task.Items = taskItems.ToArray();
+                                _voiceGenerationTaskQueue.AddTask(task);
+                            }
+
+                            taskIndex++;
                         }
                     }
                 }
@@ -1498,7 +1794,10 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                     ProgressDetail = task.ProgressDetail,
                     SaveFile = task.SaveFile,
                     Speed = task.Speed,
-                    SpaceTime = task.SpaceTime
+                    Volume = task.Volume,
+                    SpaceTime = task.SpaceTime,
+                    IsPreview = task.IsPreview,
+                    PreviewSourceName = task.PreviewSourceName
                 };
 
                 foreach (VoiceGenerationTaskItem item in task.Items)
@@ -1511,7 +1810,9 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                         EndNewLine = item.EndNewLine,
                         FeatureSelections = item.FeatureSelections != null
                             ? new Dictionary<string, int>(item.FeatureSelections)
-                            : new Dictionary<string, int>()
+                            : new Dictionary<string, int>(),
+                        Speed = item.Speed,
+                        Volume = item.Volume
                     });
                 }
 
@@ -1555,7 +1856,10 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                         ProgressDetail = task.ProgressDetail,
                         SaveFile = task.SaveFile,
                         Speed = task.Speed,
-                        SpaceTime = task.SpaceTime
+                        Volume = task.Volume,
+                        SpaceTime = task.SpaceTime,
+                        IsPreview = task.IsPreview,
+                        PreviewSourceName = task.PreviewSourceName
                     };
 
                     if (voiceTask.Status == VoiceGenerationTaskStatus.正在生成 ||
@@ -1569,16 +1873,21 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                     foreach (CoreVoiceGenerationTaskItem item in task.Items)
                     {
                         SpeakerInfo speaker = !string.IsNullOrWhiteSpace(item.Speaker) ? new SpeakerInfo(item.Speaker) : null;
-                        items.Add(new VoiceGenerationTaskItem
+                        VoiceGenerationTaskItem newItem = new VoiceGenerationTaskItem
                         {
-                            TempFile = item.TempFile,
                             Speaker = speaker,
                             Text = item.Text,
                             EndNewLine = item.EndNewLine,
                             FeatureSelections = item.FeatureSelections != null
                                 ? new Dictionary<string, int>(item.FeatureSelections)
-                                : new Dictionary<string, int>()
-                        });
+                                : new Dictionary<string, int>(),
+                            Speed = item.Speed,
+                            Volume = item.Volume
+                        };
+
+                        newItem.SetTempFile(item.TempFile);
+
+                        items.Add(newItem);
                     }
                     voiceTask.Items = items.ToArray();
 

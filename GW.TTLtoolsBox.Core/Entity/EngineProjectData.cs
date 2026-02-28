@@ -14,6 +14,12 @@ namespace GW.TTLtoolsBox.Core.Entity
         #region 属性
 
         /// <summary>
+        /// 获取或设置文本拆分的拆分长度。
+        /// </summary>
+        [DataMember(Name = "textSplit_splitLength")]
+        public int TextSplit_SplitLength { get; set; } = 100;
+
+        /// <summary>
         /// 获取或设置多音字替换的最终文本。
         /// </summary>
         [DataMember(Name = "polyReplace_finalText")]

@@ -2,7 +2,7 @@ using System;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
-using GW.TTLtoolsBox.Core.SystemOption.Helper;
+using GW.TTLtoolsBox.Core.TtlEngine.Helper;
 using GW.TTLtoolsBox.WinFormUi.Manager;
 
 namespace GW.TTLtoolsBox.WinFormUi.Manager
@@ -135,7 +135,17 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
         /// <summary>
         /// 获取显示语音速度。
         /// </summary>
-        public string ShowSpeed => $"{Speed}%";
+        public string ShowSpeed => Speed > 0 ? $"{Speed}%" : "-";
+
+        /// <summary>
+        /// 获取或设置音量。
+        /// </summary>
+        public int Volume { get; set; } = 100;
+
+        /// <summary>
+        /// 获取显示音量。
+        /// </summary>
+        public string ShowVolume => Volume > 0 ? $"{Volume}%" : "-";
 
         /// <summary>
         /// 获取或设置空白时长（单位：秒）。

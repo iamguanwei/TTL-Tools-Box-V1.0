@@ -33,16 +33,25 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.bt_语音生成预处理_清理文本 = new System.Windows.Forms.Button();
             this.bt_语音生成预处理_插入段落分隔符 = new System.Windows.Forms.Button();
             this.pan_语音生成预处理_参数 = new System.Windows.Forms.Panel();
+            this.lab_语音生成预处理_全局语速百分号 = new System.Windows.Forms.Label();
+            this.panel1 = new System.Windows.Forms.Panel();
+            this.cb_语音生成预处理_指定全局语速 = new System.Windows.Forms.CheckBox();
+            this.nud_语音生成预处理_语速设置 = new System.Windows.Forms.NumericUpDown();
             this.nud_语音生成预处理_空白时长 = new System.Windows.Forms.NumericUpDown();
             this.bt_语音生成预处理_发送到语音生成 = new System.Windows.Forms.Button();
-            this.nud_语音生成预处理_语速设置 = new System.Windows.Forms.NumericUpDown();
-            this.cb_语音生成预处理_默认角色设置 = new System.Windows.Forms.ComboBox();
-            this.lab_语音生成预处理_语速设置 = new System.Windows.Forms.Label();
+            this.cb_语音生成预处理_默认朗读者设置 = new System.Windows.Forms.ComboBox();
             this.lab_语音生成预处理_空白时长 = new System.Windows.Forms.Label();
-            this.lab_语音生成预处理_默认角色设置 = new System.Windows.Forms.Label();
+            this.lab_语音生成预处理_默认朗读者设置 = new System.Windows.Forms.Label();
+            this.pan_语音生成_指定全局音量 = new System.Windows.Forms.Panel();
+            this.cb_语音生成_指定全局音量 = new System.Windows.Forms.CheckBox();
+            this.nud_语音生成_全局音量 = new System.Windows.Forms.NumericUpDown();
+            this.label1 = new System.Windows.Forms.Label();
             this.pan_语音生成预处理_参数.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.nud_语音生成预处理_空白时长)).BeginInit();
+            this.panel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.nud_语音生成预处理_语速设置)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.nud_语音生成预处理_空白时长)).BeginInit();
+            this.pan_语音生成_指定全局音量.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.nud_语音生成_全局音量)).BeginInit();
             this.SuspendLayout();
             // 
             // tb_语音生成预处理_最终文本
@@ -94,17 +103,64 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             // 
             this.pan_语音生成预处理_参数.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
+            this.pan_语音生成预处理_参数.Controls.Add(this.lab_语音生成预处理_全局语速百分号);
+            this.pan_语音生成预处理_参数.Controls.Add(this.pan_语音生成_指定全局音量);
+            this.pan_语音生成预处理_参数.Controls.Add(this.panel1);
             this.pan_语音生成预处理_参数.Controls.Add(this.nud_语音生成预处理_空白时长);
             this.pan_语音生成预处理_参数.Controls.Add(this.bt_语音生成预处理_发送到语音生成);
-            this.pan_语音生成预处理_参数.Controls.Add(this.nud_语音生成预处理_语速设置);
-            this.pan_语音生成预处理_参数.Controls.Add(this.cb_语音生成预处理_默认角色设置);
-            this.pan_语音生成预处理_参数.Controls.Add(this.lab_语音生成预处理_语速设置);
+            this.pan_语音生成预处理_参数.Controls.Add(this.cb_语音生成预处理_默认朗读者设置);
             this.pan_语音生成预处理_参数.Controls.Add(this.lab_语音生成预处理_空白时长);
-            this.pan_语音生成预处理_参数.Controls.Add(this.lab_语音生成预处理_默认角色设置);
+            this.pan_语音生成预处理_参数.Controls.Add(this.lab_语音生成预处理_默认朗读者设置);
             this.pan_语音生成预处理_参数.Location = new System.Drawing.Point(0, 566);
             this.pan_语音生成预处理_参数.Name = "pan_语音生成预处理_参数";
             this.pan_语音生成预处理_参数.Size = new System.Drawing.Size(1280, 80);
             this.pan_语音生成预处理_参数.TabIndex = 14;
+            // 
+            // lab_语音生成预处理_全局语速百分号
+            // 
+            this.lab_语音生成预处理_全局语速百分号.AutoSize = true;
+            this.lab_语音生成预处理_全局语速百分号.Location = new System.Drawing.Point(510, 13);
+            this.lab_语音生成预处理_全局语速百分号.Name = "lab_语音生成预处理_全局语速百分号";
+            this.lab_语音生成预处理_全局语速百分号.Size = new System.Drawing.Size(11, 12);
+            this.lab_语音生成预处理_全局语速百分号.TabIndex = 17;
+            this.lab_语音生成预处理_全局语速百分号.Text = "%";
+            // 
+            // panel1
+            // 
+            this.panel1.Controls.Add(this.cb_语音生成预处理_指定全局语速);
+            this.panel1.Controls.Add(this.nud_语音生成预处理_语速设置);
+            this.panel1.Location = new System.Drawing.Point(345, 3);
+            this.panel1.Name = "panel1";
+            this.panel1.Size = new System.Drawing.Size(189, 35);
+            this.panel1.TabIndex = 16;
+            // 
+            // cb_语音生成预处理_指定全局语速
+            // 
+            this.cb_语音生成预处理_指定全局语速.AutoSize = true;
+            this.cb_语音生成预处理_指定全局语速.Location = new System.Drawing.Point(3, 9);
+            this.cb_语音生成预处理_指定全局语速.Name = "cb_语音生成预处理_指定全局语速";
+            this.cb_语音生成预处理_指定全局语速.Size = new System.Drawing.Size(96, 16);
+            this.cb_语音生成预处理_指定全局语速.TabIndex = 0;
+            this.cb_语音生成预处理_指定全局语速.Text = "指定全局语速";
+            this.cb_语音生成预处理_指定全局语速.UseVisualStyleBackColor = true;
+            // 
+            // nud_语音生成预处理_语速设置
+            // 
+            this.nud_语音生成预处理_语速设置.Location = new System.Drawing.Point(105, 6);
+            this.nud_语音生成预处理_语速设置.Minimum = new decimal(new int[] {
+            1,
+            0,
+            0,
+            0});
+            this.nud_语音生成预处理_语速设置.Name = "nud_语音生成预处理_语速设置";
+            this.nud_语音生成预处理_语速设置.Size = new System.Drawing.Size(54, 21);
+            this.nud_语音生成预处理_语速设置.TabIndex = 2;
+            this.nud_语音生成预处理_语速设置.Value = new decimal(new int[] {
+            100,
+            0,
+            0,
+            0});
+            this.nud_语音生成预处理_语速设置.ValueChanged += new System.EventHandler(this.nud_语音生成预处理_语速设置_ValueChanged);
             // 
             // nud_语音生成预处理_空白时长
             // 
@@ -114,7 +170,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             0,
             0,
             65536});
-            this.nud_语音生成预处理_空白时长.Location = new System.Drawing.Point(265, 47);
+            this.nud_语音生成预处理_空白时长.Location = new System.Drawing.Point(112, 47);
             this.nud_语音生成预处理_空白时长.Name = "nud_语音生成预处理_空白时长";
             this.nud_语音生成预处理_空白时长.Size = new System.Drawing.Size(57, 21);
             this.nud_语音生成预处理_空白时长.TabIndex = 15;
@@ -136,59 +192,78 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.bt_语音生成预处理_发送到语音生成.UseVisualStyleBackColor = true;
             this.bt_语音生成预处理_发送到语音生成.Click += new System.EventHandler(this.bt_语音生成预处理_发送到语音生成_Click);
             // 
-            // nud_语音生成预处理_语速设置
+            // cb_语音生成预处理_默认朗读者设置
             // 
-            this.nud_语音生成预处理_语速设置.Location = new System.Drawing.Point(84, 48);
-            this.nud_语音生成预处理_语速设置.Minimum = new decimal(new int[] {
-            1,
-            0,
-            0,
-            0});
-            this.nud_语音生成预处理_语速设置.Name = "nud_语音生成预处理_语速设置";
-            this.nud_语音生成预处理_语速设置.Size = new System.Drawing.Size(54, 21);
-            this.nud_语音生成预处理_语速设置.TabIndex = 2;
-            this.nud_语音生成预处理_语速设置.Value = new decimal(new int[] {
-            100,
-            0,
-            0,
-            0});
-            this.nud_语音生成预处理_语速设置.ValueChanged += new System.EventHandler(this.nud_语音生成预处理_语速设置_ValueChanged);
-            // 
-            // cb_语音生成预处理_默认角色设置
-            // 
-            this.cb_语音生成预处理_默认角色设置.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cb_语音生成预处理_默认角色设置.FormattingEnabled = true;
-            this.cb_语音生成预处理_默认角色设置.Location = new System.Drawing.Point(84, 9);
-            this.cb_语音生成预处理_默认角色设置.Name = "cb_语音生成预处理_默认角色设置";
-            this.cb_语音生成预处理_默认角色设置.Size = new System.Drawing.Size(244, 20);
-            this.cb_语音生成预处理_默认角色设置.TabIndex = 1;
-            // 
-            // lab_语音生成预处理_语速设置
-            // 
-            this.lab_语音生成预处理_语速设置.AutoSize = true;
-            this.lab_语音生成预处理_语速设置.Location = new System.Drawing.Point(12, 52);
-            this.lab_语音生成预处理_语速设置.Name = "lab_语音生成预处理_语速设置";
-            this.lab_语音生成预处理_语速设置.Size = new System.Drawing.Size(65, 12);
-            this.lab_语音生成预处理_语速设置.TabIndex = 3;
-            this.lab_语音生成预处理_语速设置.Text = "语速设置：";
+            this.cb_语音生成预处理_默认朗读者设置.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cb_语音生成预处理_默认朗读者设置.FormattingEnabled = true;
+            this.cb_语音生成预处理_默认朗读者设置.Location = new System.Drawing.Point(95, 9);
+            this.cb_语音生成预处理_默认朗读者设置.Name = "cb_语音生成预处理_默认朗读者设置";
+            this.cb_语音生成预处理_默认朗读者设置.Size = new System.Drawing.Size(244, 20);
+            this.cb_语音生成预处理_默认朗读者设置.TabIndex = 1;
             // 
             // lab_语音生成预处理_空白时长
             // 
             this.lab_语音生成预处理_空白时长.AutoSize = true;
-            this.lab_语音生成预处理_空白时长.Location = new System.Drawing.Point(165, 52);
+            this.lab_语音生成预处理_空白时长.Location = new System.Drawing.Point(12, 52);
             this.lab_语音生成预处理_空白时长.Name = "lab_语音生成预处理_空白时长";
             this.lab_语音生成预处理_空白时长.Size = new System.Drawing.Size(113, 12);
             this.lab_语音生成预处理_空白时长.TabIndex = 4;
             this.lab_语音生成预处理_空白时长.Text = "段间空白时长(秒)：";
             // 
-            // lab_语音生成预处理_默认角色设置
+            // lab_语音生成预处理_默认朗读者设置
             // 
-            this.lab_语音生成预处理_默认角色设置.AutoSize = true;
-            this.lab_语音生成预处理_默认角色设置.Location = new System.Drawing.Point(12, 13);
-            this.lab_语音生成预处理_默认角色设置.Name = "lab_语音生成预处理_默认角色设置";
-            this.lab_语音生成预处理_默认角色设置.Size = new System.Drawing.Size(65, 12);
-            this.lab_语音生成预处理_默认角色设置.TabIndex = 0;
-            this.lab_语音生成预处理_默认角色设置.Text = "默认角色：";
+            this.lab_语音生成预处理_默认朗读者设置.AutoSize = true;
+            this.lab_语音生成预处理_默认朗读者设置.Location = new System.Drawing.Point(12, 13);
+            this.lab_语音生成预处理_默认朗读者设置.Name = "lab_语音生成预处理_默认朗读者设置";
+            this.lab_语音生成预处理_默认朗读者设置.Size = new System.Drawing.Size(77, 12);
+            this.lab_语音生成预处理_默认朗读者设置.TabIndex = 0;
+            this.lab_语音生成预处理_默认朗读者设置.Text = "默认朗读者：";
+            // 
+            // pan_语音生成_指定全局音量
+            // 
+            this.pan_语音生成_指定全局音量.Controls.Add(this.label1);
+            this.pan_语音生成_指定全局音量.Controls.Add(this.cb_语音生成_指定全局音量);
+            this.pan_语音生成_指定全局音量.Controls.Add(this.nud_语音生成_全局音量);
+            this.pan_语音生成_指定全局音量.Location = new System.Drawing.Point(540, 3);
+            this.pan_语音生成_指定全局音量.Name = "pan_语音生成_指定全局音量";
+            this.pan_语音生成_指定全局音量.Size = new System.Drawing.Size(189, 35);
+            this.pan_语音生成_指定全局音量.TabIndex = 16;
+            // 
+            // cb_语音生成_指定全局音量
+            // 
+            this.cb_语音生成_指定全局音量.AutoSize = true;
+            this.cb_语音生成_指定全局音量.Location = new System.Drawing.Point(3, 9);
+            this.cb_语音生成_指定全局音量.Name = "cb_语音生成_指定全局音量";
+            this.cb_语音生成_指定全局音量.Size = new System.Drawing.Size(96, 16);
+            this.cb_语音生成_指定全局音量.TabIndex = 0;
+            this.cb_语音生成_指定全局音量.Text = "指定全局音量";
+            this.cb_语音生成_指定全局音量.UseVisualStyleBackColor = true;
+            // 
+            // nud_语音生成_全局音量
+            // 
+            this.nud_语音生成_全局音量.Location = new System.Drawing.Point(105, 6);
+            this.nud_语音生成_全局音量.Minimum = new decimal(new int[] {
+            1,
+            0,
+            0,
+            0});
+            this.nud_语音生成_全局音量.Name = "nud_语音生成_全局音量";
+            this.nud_语音生成_全局音量.Size = new System.Drawing.Size(54, 21);
+            this.nud_语音生成_全局音量.TabIndex = 2;
+            this.nud_语音生成_全局音量.Value = new decimal(new int[] {
+            100,
+            0,
+            0,
+            0});
+            // 
+            // label1
+            // 
+            this.label1.AutoSize = true;
+            this.label1.Location = new System.Drawing.Point(165, 10);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(11, 12);
+            this.label1.TabIndex = 18;
+            this.label1.Text = "%";
             // 
             // VoicePreprocessPanel
             // 
@@ -203,8 +278,13 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.Size = new System.Drawing.Size(1280, 646);
             this.pan_语音生成预处理_参数.ResumeLayout(false);
             this.pan_语音生成预处理_参数.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.nud_语音生成预处理_空白时长)).EndInit();
+            this.panel1.ResumeLayout(false);
+            this.panel1.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.nud_语音生成预处理_语速设置)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.nud_语音生成预处理_空白时长)).EndInit();
+            this.pan_语音生成_指定全局音量.ResumeLayout(false);
+            this.pan_语音生成_指定全局音量.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.nud_语音生成_全局音量)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -219,10 +299,16 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         private System.Windows.Forms.Panel pan_语音生成预处理_参数;
         private System.Windows.Forms.NumericUpDown nud_语音生成预处理_空白时长;
         private System.Windows.Forms.NumericUpDown nud_语音生成预处理_语速设置;
-        private System.Windows.Forms.ComboBox cb_语音生成预处理_默认角色设置;
+        private System.Windows.Forms.ComboBox cb_语音生成预处理_默认朗读者设置;
         private System.Windows.Forms.Button bt_语音生成预处理_发送到语音生成;
-        private System.Windows.Forms.Label lab_语音生成预处理_语速设置;
         private System.Windows.Forms.Label lab_语音生成预处理_空白时长;
-        private System.Windows.Forms.Label lab_语音生成预处理_默认角色设置;
+        private System.Windows.Forms.Label lab_语音生成预处理_默认朗读者设置;
+        private System.Windows.Forms.Panel panel1;
+        private System.Windows.Forms.CheckBox cb_语音生成预处理_指定全局语速;
+        private System.Windows.Forms.Label lab_语音生成预处理_全局语速百分号;
+        private System.Windows.Forms.Panel pan_语音生成_指定全局音量;
+        private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.CheckBox cb_语音生成_指定全局音量;
+        private System.Windows.Forms.NumericUpDown nud_语音生成_全局音量;
     }
 }

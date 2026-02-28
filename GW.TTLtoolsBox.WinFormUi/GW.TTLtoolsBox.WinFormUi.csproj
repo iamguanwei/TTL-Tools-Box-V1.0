@@ -132,6 +132,18 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <EmbeddedResource Include="UI\Panels\RoleEmotionPanel.resx">
+      <DependentUpon>RoleEmotionPanel.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="UI\Panels\TextSplitPanel.resx">
+      <DependentUpon>TextSplitPanel.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="UI\Panels\TtlSchemePanel.resx">
+      <DependentUpon>TtlSchemePanel.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="UI\Panels\VoiceGenerationPanel.resx">
+      <DependentUpon>VoiceGenerationPanel.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="UI\Panels\VoicePreprocessPanel.resx">
       <DependentUpon>VoicePreprocessPanel.cs</DependentUpon>
     </EmbeddedResource>

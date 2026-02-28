@@ -1,11 +1,11 @@
-﻿﻿﻿﻿using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using GW.TTLtoolsBox.Core.SystemOption.Helper;
-using GW.TTLtoolsBox.Core.SystemOption.TtlEngine;
+using GW.TTLtoolsBox.Core.TtlEngine;
+using GW.TTLtoolsBox.Core.TtlEngine.Helper;
 using GW.TTLtoolsBox.WinFormUi.Helper;
 using static GW.TTLtoolsBox.WinFormUi.Helper.Constants;
 
@@ -97,15 +97,15 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
 
         public void SelectEngine(string engineId)
         {
-            string previousEngineId = _currentEngineConnector?.Id ?? None_Engine_Id;
+            string previousEngineId = _currentEngineConnector?.Id ?? 无_引擎标识;
 
             ITtlEngineConnector engine = null;
-            if (!string.IsNullOrEmpty(engineId) && engineId != None_Engine_Id)
+            if (!string.IsNullOrEmpty(engineId) && engineId != 无_引擎标识)
             {
                 engine = _engineConnectorArray?.FirstOrDefault(c => c.Id == engineId);
             }
 
-            string newEngineId = engine?.Id ?? None_Engine_Id;
+            string newEngineId = engine?.Id ?? 无_引擎标识;
             bool changed = previousEngineId != newEngineId;
             _currentEngineConnector = engine;
 
@@ -118,7 +118,7 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
 
         public string GetCurrentEngineId()
         {
-            return _currentEngineConnector?.Id ?? None_Engine_Id;
+            return _currentEngineConnector?.Id ?? 无_引擎标识;
         }
 
         public async Task ConnectAsync()
@@ -338,6 +338,9 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
                         if (constructor != null)
                         {
                             var connector = (ITtlEngineConnector)constructor.Invoke(null);
+
+                            connector.ConnectionTimeout = TimeSpan.FromSeconds(TTL引擎_连接超时秒数);
+                            connector.RequestTimeout = TimeSpan.FromMinutes(TTL引擎_请求超时分钟数);
 
                             try
                             {

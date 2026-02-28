@@ -74,6 +74,15 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
 
         #endregion
 
+        #region 属性
+
+        /// <summary>
+        /// 获取或设置当前引擎ID。
+        /// </summary>
+        public string CurrentEngineId { get; set; } = string.Empty;
+
+        #endregion
+
         #region 构造函数
 
         /// <summary>
@@ -122,6 +131,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             {
                 projectFile.TextSplit_OriginalText = this.tb_原始文本.Text;
                 projectFile.TextSplit_FinalText = this.tb_最终文本.Text;
+                projectFile.SetTextSplit_SplitLength(CurrentEngineId, (int)this.nud_拆分长度.Value);
             }
         }
 
@@ -133,11 +143,14 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         {
             if (projectFile != null)
             {
+                _isLoading = true;
                 UpdateUi(() =>
                 {
                     this.tb_原始文本.Text = projectFile.TextSplit_OriginalText;
                     this.tb_最终文本.Text = projectFile.TextSplit_FinalText;
+                    this.nud_拆分长度.Value = projectFile.GetTextSplit_SplitLength(CurrentEngineId, 100);
                 });
+                _isLoading = false;
             }
         }
 
@@ -154,6 +167,11 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// </summary>
         private string _lastMaxFinishedTextSubstring = string.Empty;
 
+        /// <summary>
+        /// 是否正在加载数据，用于防止加载时触发修改事件。
+        /// </summary>
+        private bool _isLoading = false;
+
         #endregion
 
         #region UI初始化
@@ -168,16 +186,20 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
 
             this.rb_拆分方式_按句子拆分.Text += $" [ 整句切分 {整句_分割符号}  半句切分 {半句_分割符号} ]";
             this.rb_拆分方式_按句子拆分.Checked = bool.Parse(Setting.GetValue(this.rb_拆分方式_按句子拆分.Name, "true"));
-            this.nud_拆分长度.Value = decimal.Parse(Setting.GetValue(this.nud_拆分长度.Name, $"{分割_最小长度}"));
+            this.nud_拆分长度.Value = 100;
 
             this.rb_拆分参数_按对话拆分.Text += $" [ {对话_分割符号} ]";
             this.rb_拆分参数_按对话拆分.Checked = bool.Parse(Setting.GetValue(this.rb_拆分参数_按对话拆分.Name, "false"));
+
+            this.rb_拆分参数_按空行拆分.Checked = bool.Parse(Setting.GetValue(this.rb_拆分参数_按空行拆分.Name, "false"));
 
             this.nud_拆分长度.Minimum = 分割_最小长度;
             this.nud_拆分长度.Maximum = 100000;
 
             this.rb_拆分方式_按句子拆分.CheckedChanged += rb_拆分方式_CheckedChanged;
             this.rb_拆分参数_按对话拆分.CheckedChanged += rb_拆分方式_CheckedChanged;
+            this.rb_拆分参数_按空行拆分.CheckedChanged += rb_拆分方式_CheckedChanged;
+            this.nud_拆分长度.ValueChanged += nud_拆分长度_ValueChanged;
 
             refresh文本拆分Ui();
         }
@@ -264,32 +286,35 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             {
                 string dText;
 
-                // 先用段落分隔符拆分整个文本
-                string[] paragraphs = sText.Split(new string[] { 生成段落_分隔符 }, StringSplitOptions.None);
-                List<string> processedParagraphs = new List<string>();
-
-                // 对每一段文本采用之前的逻辑处理
-                foreach (string paragraph in paragraphs)
+                if (this.rb_拆分参数_按空行拆分.Checked == true)
                 {
-                    string processedText = paragraph;
+                    dText = TextSplitHelper.SplitByEmptyLine(sText);
+                }
+                else
+                {
+                    string[] paragraphs = sText.Split(new string[] { 生成段落_分隔符 }, StringSplitOptions.None);
+                    List<string> processedParagraphs = new List<string>();
 
-                    if (this.rb_拆分方式_按句子拆分.Checked == true) // 按长度拆分
-                        processedText = TextSplitHelper.SplitText(
-                            paragraph,
-                            (int)分割_最小长度,
-                            (int)this.nud_拆分长度.Value,
-                            整句_分割符号.ToCharArray(),
-                            半句_分割符号.ToCharArray());
-                    else if (this.rb_拆分参数_按对话拆分.Checked == true) // 按对话拆分
-                        processedText = TextSplitHelper.SplitText(paragraph, 对话_分割符号.ToCharArray());
+                    foreach (string paragraph in paragraphs)
+                    {
+                        string processedText = paragraph;
 
-                    processedParagraphs.Add(processedText);
+                        if (this.rb_拆分方式_按句子拆分.Checked == true)
+                            processedText = TextSplitHelper.SplitText(
+                                paragraph,
+                                (int)分割_最小长度,
+                                (int)this.nud_拆分长度.Value,
+                                整句_分割符号.ToCharArray(),
+                                半句_分割符号.ToCharArray());
+                        else if (this.rb_拆分参数_按对话拆分.Checked == true)
+                            processedText = TextSplitHelper.SplitText(paragraph, 对话_分割符号.ToCharArray());
+
+                        processedParagraphs.Add(processedText);
+                    }
+
+                    dText = string.Join(生成段落_分隔符, processedParagraphs);
                 }
 
-                // 把每一段文本重新拼接起来，中间用"回车换行+段落分隔符"连接
-                dText = string.Join(生成段落_分隔符, processedParagraphs);
-
-                // 写入最终结果
                 this.tb_最终文本.Text = dText;
             }
         }
@@ -385,9 +410,8 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         private void bt_开始拆分_Click(object sender, EventArgs e)
         {
             Setting.SetValue(this.rb_拆分方式_按句子拆分.Name, this.rb_拆分方式_按句子拆分.Checked.ToString());
-            Setting.SetValue(this.nud_拆分长度.Name, this.nud_拆分长度.Value.ToString());
-
             Setting.SetValue(this.rb_拆分参数_按对话拆分.Name, this.rb_拆分参数_按对话拆分.Checked.ToString());
+            Setting.SetValue(this.rb_拆分参数_按空行拆分.Name, this.rb_拆分参数_按空行拆分.Checked.ToString());
 
             do拆分文本Job();
             refresh文本拆分Ui();
@@ -431,6 +455,19 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         private void rb_拆分方式_CheckedChanged(object sender, EventArgs e)
         {
             refresh文本拆分Ui();
+        }
+
+        /// <summary>
+        /// 事件处理：拆分长度数值改变。
+        /// </summary>
+        /// <param name="sender">发送者。</param>
+        /// <param name="e">事件参数。</param>
+        private void nud_拆分长度_ValueChanged(object sender, EventArgs e)
+        {
+            if (!_isLoading)
+            {
+                onProjectModified();
+            }
         }
 
         #endregion

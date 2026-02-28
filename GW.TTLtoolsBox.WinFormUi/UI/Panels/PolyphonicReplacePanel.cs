@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Reflection;
 using System.Windows.Forms;
 using GW.TTLtoolsBox.Core.PolyReplace;
 using GW.TTLtoolsBox.Core.FileAccesser;
@@ -218,9 +219,30 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// </summary>
         private int _work多音字Index = -1;
 
+        /// <summary>
+        /// 记录每个组是否已经完成（用户已离开该组）。
+        /// </summary>
+        private HashSet<PolyphonicItem> _completedGroups = new HashSet<PolyphonicItem>();
+
         #endregion
 
         #region UI初始化
+
+        /// <summary>
+        /// 启用DataGridView的双缓冲以减少闪烁。
+        /// </summary>
+        /// <param name="dgv">目标DataGridView控件。</param>
+        private void enableDoubleBuffering(DataGridView dgv)
+        {
+            if (dgv == null) return;
+
+            typeof(DataGridView).InvokeMember(
+                "DoubleBuffered",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.SetProperty,
+                null,
+                dgv,
+                new object[] { true });
+        }
 
         /// <summary>
         /// 初始化多音字替换UI。
@@ -230,6 +252,8 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.tb_最终文本.MaxLength = int.MaxValue;
 
             this.dgv_多音字方案.EditMode = DataGridViewEditMode.EditOnEnter;
+
+            enableDoubleBuffering(this.dgv_多音字方案);
 
             this.dgv_多音字方案.MouseDown -= dgv_多音字方案_MouseDown;
             this.dgv_多音字方案.MouseDown += dgv_多音字方案_MouseDown;
@@ -289,100 +313,85 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             {
                 string outputText = this.tb_最终文本.Text;
 
-                // 最终文本
+                bool outputTextHasContent = outputText.Length > 0;
+
+                this.tb_最终文本.Enabled = !_do多音字替换Working;
+                this.bt_复制最终文本.Enabled = this.bt_发送最终文本到下一个步骤.Enabled = this.tb_最终文本.Enabled && outputTextHasContent;
+                this.bt_清理最终文本.Enabled = this.tb_最终文本.Enabled && outputTextHasContent;
+
+                this.dgv_多音字方案.Enabled = !_do多音字替换Working;
+                this.bt_保存多音字方案.Enabled = this.bt_还原多音字方案.Enabled = this.dgv_多音字方案.Enabled && _dgv多音字方案表Changed;
+
+                var currentEngine = TtlSchemeController?.CurrentEngineConnector;
+                if (currentEngine != null) this.cb_选择多音字方案.SelectedItem = currentEngine.PolyphonicScheme.ShowName;
+                this.cb_选择多音字方案.Enabled = !_do多音字替换Working && this.cb_选择多音字方案.Items.Count > 0 && currentEngine == null;
+                this.bt_开始替换最终文本中的多音字.Enabled =
+                    !_do多音字替换Working &&
+                    this.cb_选择多音字方案.Items.Count > 0 &&
+                    this.cb_选择多音字方案.SelectedItem != null &&
+                    outputTextHasContent &&
+                    _savedPolyphonicItemArray.Length > 0;
+
+                this.pan_实施工作面板.Visible = outputTextHasContent && _do多音字替换Working && _working多音字Array.Length > 0 && _work多音字Index >= 0;
+                if (this.pan_实施工作面板.Visible)
                 {
-                    // 保存文本框的选择状态
-                    int selectionStart = this.tb_最终文本.SelectionStart;
-                    int selectionLength = this.tb_最终文本.SelectionLength;
-                    bool isFocused = this.tb_最终文本.Focused;
-
-                    this.tb_最终文本.Enabled = !_do多音字替换Working;
-                    this.bt_复制最终文本.Enabled = this.bt_发送最终文本到下一个步骤.Enabled = this.tb_最终文本.Enabled && outputText.Length > 0;
-                    this.bt_清理最终文本.Enabled = this.tb_最终文本.Enabled && outputText.Length > 0;
-
-                    // 恢复文本框的选择状态
-                    if (isFocused)
-                    {
-                        this.tb_最终文本.Focus();
-                        this.tb_最终文本.SelectionStart = selectionStart;
-                        this.tb_最终文本.SelectionLength = selectionLength;
-                    }
-                    else
-                    {
-                        this.tb_最终文本.SelectionStart = selectionStart;
-                        this.tb_最终文本.SelectionLength = selectionLength;
-                    }
-                }
-
-                // 多音字方案
-                {
-                    this.dgv_多音字方案.Enabled = !_do多音字替换Working;
-                    this.bt_保存多音字方案.Enabled = this.bt_还原多音字方案.Enabled = this.dgv_多音字方案.Enabled && _dgv多音字方案表Changed;
-                }
-
-                // 工作区域
-                {
-                    var currentEngine = TtlSchemeController?.CurrentEngineConnector;
-                    if (currentEngine != null) this.cb_选择多音字方案.SelectedItem = currentEngine.PolyphonicScheme.ShowName;
-                    this.cb_选择多音字方案.Enabled = !_do多音字替换Working && this.cb_选择多音字方案.Items.Count > 0 && currentEngine == null;
-                    this.bt_开始替换最终文本中的多音字.Enabled =
-                        !_do多音字替换Working &&
-                        this.cb_选择多音字方案.Items.Count > 0 &&
-                        this.cb_选择多音字方案.SelectedItem != null &&
-                        outputText.Length > 0 &&
-                        _savedPolyphonicItemArray.Length > 0;
-
-                    this.pan_实施工作面板.Visible = outputText.Length > 0 && _do多音字替换Working && _working多音字Array.Length > 0 && _work多音字Index >= 0;
-                    if (this.pan_实施工作面板.Visible)
-                    {
-                        _work多音字Index = _work多音字Index >= _working多音字Array.Length ? _working多音字Array.Length - 1 : _work多音字Index;
-
-                        this.lab_上文.Text = _working多音字Array[_work多音字Index].PreContextText;
-                        this.lab_替换目标.Text = _working多音字Array[_work多音字Index].TargetText;
-                        this.lab_下文.Text = _working多音字Array[_work多音字Index].PostContextText;
-
-                        this.bt_上一条替换目标.Enabled = _work多音字Index > 0;
-                        this.bt_下一条替换目标.Enabled = _work多音字Index < _working多音字Array.Length - 1;
-                        this.bt_下一组替换目标.Enabled = _working多音字Array.Last().UsedPolyphonicItem != _working多音字Array[_work多音字Index].UsedPolyphonicItem;
-                        this.bt_应用替换结果.Enabled = this.bt_取消应用替换结果.Enabled = true;
-
-                        // 工作统计信息
-                        {
-                            this.lab_替换工作信息.Text = BuildWorkStatisticsText();
-                        }
-
-                        // 选项按钮
-                        {
-                            ClearAlternativePanelControls();
-
-                            // 获取当前替换项的备选文本
-                            var alternativeTexts = _working多音字Array[_work多音字Index].AlternativeTexts;
-
-                            // 复制模板控件并添加到面板
-                            int yOffset = this.rb_待选词模板.Top;
-                            int height = this.rb_待选词模板.Height + 5;
-
-                            // 获取当前ReplaceItem
-                            var currentReplaceItem = _working多音字Array[_work多音字Index];
-                            var previousReplaceItem = _work多音字Index > 0 ? _working多音字Array[_work多音字Index - 1] : null;
-
-                            // 确定选中索引
-                            int selectedIndex = CalculateSelectedIndex(currentReplaceItem, alternativeTexts, previousReplaceItem);
-
-                            for (int i = 0; i < alternativeTexts.Length; i++)
-                            {
-                                RadioButton rb = CreateAlternativeRadioButton(alternativeTexts, i, selectedIndex, yOffset, height);
-                                this.pan_待选词.Controls.Add(rb);
-                            }
-
-                            // 确保模板控件隐藏
-                            this.rb_待选词模板.Visible = false;
-                        }
-                    }
+                    refresh工作面板内容();
                 }
             };
 
             UpdateUi(action);
+        }
+
+        /// <summary>
+        /// 轻量级刷新按钮状态（仅更新按钮Enabled状态，不刷新完整UI）。
+        /// </summary>
+        private void refreshButtonStates()
+        {
+            Action action = () =>
+            {
+                this.bt_保存多音字方案.Enabled = this.bt_还原多音字方案.Enabled = this.dgv_多音字方案.Enabled && _dgv多音字方案表Changed;
+            };
+
+            UpdateUi(action);
+        }
+
+        /// <summary>
+        /// 刷新工作面板内容。
+        /// </summary>
+        private void refresh工作面板内容()
+        {
+            _work多音字Index = _work多音字Index >= _working多音字Array.Length ? _working多音字Array.Length - 1 : _work多音字Index;
+
+            this.lab_上文.Text = _working多音字Array[_work多音字Index].PreContextText;
+            this.lab_替换目标.Text = _working多音字Array[_work多音字Index].TargetText;
+            this.lab_下文.Text = _working多音字Array[_work多音字Index].PostContextText;
+
+            this.bt_上一条替换目标.Enabled = _work多音字Index > 0;
+            this.bt_下一条替换目标.Enabled = _work多音字Index < _working多音字Array.Length - 1;
+            this.bt_下一组替换目标.Enabled = _working多音字Array.Last().UsedPolyphonicItem != _working多音字Array[_work多音字Index].UsedPolyphonicItem;
+            this.bt_应用替换结果.Enabled = this.bt_取消应用替换结果.Enabled = true;
+
+            this.lab_替换工作信息.Text = BuildWorkStatisticsText();
+
+            ClearAlternativePanelControls();
+
+            var alternativeTexts = _working多音字Array[_work多音字Index].AlternativeTexts;
+
+            int yOffset = this.rb_待选词模板.Top;
+            int height = this.rb_待选词模板.Height + 5;
+
+            var currentReplaceItem = _working多音字Array[_work多音字Index];
+            var previousReplaceItem = _work多音字Index > 0 ? _working多音字Array[_work多音字Index - 1] : null;
+
+            int selectedIndex = CalculateSelectedIndex(currentReplaceItem, alternativeTexts, previousReplaceItem);
+
+            for (int i = 0; i < alternativeTexts.Length; i++)
+            {
+                RadioButton rb = CreateAlternativeRadioButton(alternativeTexts, i, selectedIndex, yOffset, height);
+                this.pan_待选词.Controls.Add(rb);
+            }
+
+            this.rb_待选词模板.Visible = false;
         }
 
         /// <summary>
@@ -419,7 +428,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 if (psIndex >= 0 && psIndex < pi.PolyphonicSchemes.Length)
                 {
                     var psName = pi.PolyphonicSchemes[psIndex].Name;
-                    _working多音字Array = ReplaceItem.GenerateFromText(targetText, _savedPolyphonicItemArray, psName).OrderByDescending(r => r.OriginalText.Length).ToArray();
+                    _working多音字Array = ReplaceItem.GenerateFromText(targetText, _savedPolyphonicItemArray, psName);
                 }
             }
         }
@@ -535,7 +544,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// <returns>统计信息文本。</returns>
         private string BuildWorkStatisticsText()
         {
-            var subArray = _working多音字Array.Where(a => a.UsedPolyphonicItem.Equals(_working多音字Array[_work多音字Index].UsedPolyphonicItem) == true).ToArray();
+            var subArray = GetCurrentGroupItems();
             return string.Format(
                 "共有 {0} 个多音词需要替换，正在替换第 {1} 个，剩余 {2} 个。本组共有 {3} 个，剩余 {4} 个。",
                 $"{_working多音字Array.Length}",
@@ -543,6 +552,139 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 $"{_working多音字Array.Length - (_work多音字Index + 1)}",
                 $"{subArray.Length}",
                 $"{subArray.Length - Array.IndexOf(subArray, _working多音字Array[_work多音字Index]) - 1}");
+        }
+
+        /// <summary>
+        /// 获取当前替换项所属组的所有替换项。
+        /// </summary>
+        /// <returns>当前组的所有替换项数组。</returns>
+        private ReplaceItem[] GetCurrentGroupItems()
+        {
+            if (_work多音字Index < 0 || _work多音字Index >= _working多音字Array.Length)
+                return Array.Empty<ReplaceItem>();
+
+            var currentItem = _working多音字Array[_work多音字Index];
+            return _working多音字Array
+                .Where(a => a.UsedPolyphonicItem.Equals(currentItem.UsedPolyphonicItem))
+                .ToArray();
+        }
+
+        /// <summary>
+        /// 检查当前组是否已完成。
+        /// </summary>
+        /// <returns>如果当前组已完成返回true，否则返回false。</returns>
+        private bool IsCurrentGroupCompleted()
+        {
+            if (_work多音字Index < 0 || _work多音字Index >= _working多音字Array.Length)
+                return false;
+
+            return _completedGroups.Contains(_working多音字Array[_work多音字Index].UsedPolyphonicItem);
+        }
+
+        /// <summary>
+        /// 获取当前组内最后一个已确认选择的替换词的选择索引。
+        /// </summary>
+        /// <returns>选择索引。</returns>
+        private int GetLastConfirmedSelectionInGroup()
+        {
+            var groupItems = GetCurrentGroupItems();
+            if (groupItems.Length == 0) return 0;
+
+            int currentIndexInGroup = Array.IndexOf(groupItems, _working多音字Array[_work多音字Index]);
+
+            for (int i = currentIndexInGroup; i >= 0; i--)
+            {
+                if (groupItems[i].IsReplaceTextUpdated)
+                {
+                    return GetSelectionIndex(groupItems[i]);
+                }
+            }
+
+            return 0;
+        }
+
+        /// <summary>
+        /// 获取替换项的选择索引。
+        /// </summary>
+        /// <param name="item">替换项。</param>
+        /// <returns>选择索引。</returns>
+        private int GetSelectionIndex(ReplaceItem item)
+        {
+            if (!item.IsReplaceTextUpdated) return 0;
+
+            var alternativeTexts = item.AlternativeTexts;
+            string replaceText = item.ReplaceText;
+
+            for (int i = 0; i < alternativeTexts.Length; i++)
+            {
+                if (alternativeTexts[i] == replaceText)
+                    return i;
+            }
+
+            return 0;
+        }
+
+        /// <summary>
+        /// 为替换项设置选择索引。
+        /// </summary>
+        /// <param name="item">替换项。</param>
+        /// <param name="selectedIndex">选择索引。</param>
+        private void SetSelectionIndex(ReplaceItem item, int selectedIndex)
+        {
+            var alternativeTexts = item.AlternativeTexts;
+            if (selectedIndex >= 0 && selectedIndex < alternativeTexts.Length)
+            {
+                if (selectedIndex == 0)
+                {
+                    item.UpdateReplaceText(null);
+                }
+                else
+                {
+                    item.UpdateReplaceText(alternativeTexts[selectedIndex]);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 从UI获取当前选择索引。
+        /// </summary>
+        /// <returns>选择索引。</returns>
+        private int GetSelectionIndexFromUi()
+        {
+            RadioButton selectedRadioButton = this.pan_待选词.Controls
+                .OfType<RadioButton>()
+                .FirstOrDefault(rb => rb.Checked && rb != this.rb_待选词模板);
+
+            if (selectedRadioButton != null)
+            {
+                var alternativeTexts = _working多音字Array[_work多音字Index].AlternativeTexts;
+                return Array.IndexOf(alternativeTexts, selectedRadioButton.Text);
+            }
+
+            return 0;
+        }
+
+        /// <summary>
+        /// 获取指定索引的替换词应该使用的选择索引。
+        /// </summary>
+        /// <param name="itemIndex">替换词索引。</param>
+        /// <returns>选择索引。</returns>
+        private int GetLastConfirmedSelectionForItem(int itemIndex)
+        {
+            var item = _working多音字Array[itemIndex];
+
+            for (int i = itemIndex - 1; i >= 0; i--)
+            {
+                if (_working多音字Array[i].UsedPolyphonicItem.Equals(item.UsedPolyphonicItem))
+                {
+                    if (_working多音字Array[i].IsReplaceTextUpdated)
+                    {
+                        return GetSelectionIndex(_working多音字Array[i]);
+                    }
+                }
+            }
+
+            return 0;
         }
 
         /// <summary>
@@ -567,36 +709,28 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// <returns>选中的索引。</returns>
         private int CalculateSelectedIndex(ReplaceItem currentReplaceItem, string[] alternativeTexts, ReplaceItem previousReplaceItem)
         {
-            string currentReplaceText = currentReplaceItem.ReplaceText;
-            bool hasUpdated = currentReplaceItem.IsReplaceTextUpdated;
-
-            if (hasUpdated)
+            if (currentReplaceItem.IsReplaceTextUpdated)
             {
-                for (int i = 0; i < alternativeTexts.Length; i++)
-                {
-                    if ((i == 0 && currentReplaceText == currentReplaceItem.TargetText) ||
-                        (i > 0 && alternativeTexts[i] == currentReplaceText))
-                    {
-                        return i;
-                    }
-                }
+                return GetSelectionIndex(currentReplaceItem);
             }
-            else if (previousReplaceItem != null)
-            {
-                bool isSamePolyphonicItem = currentReplaceItem.UsedPolyphonicItem != null &&
-                                           previousReplaceItem.UsedPolyphonicItem != null &&
-                                           currentReplaceItem.UsedPolyphonicItem.Equals(previousReplaceItem.UsedPolyphonicItem);
 
-                if (isSamePolyphonicItem)
+            bool isGroupCompleted = IsCurrentGroupCompleted();
+
+            if (isGroupCompleted)
+            {
+                return GetLastConfirmedSelectionInGroup();
+            }
+            else
+            {
+                if (previousReplaceItem != null)
                 {
-                    string previousReplaceText = previousReplaceItem.ReplaceText;
-                    for (int i = 0; i < alternativeTexts.Length; i++)
+                    bool isSamePolyphonicItem = currentReplaceItem.UsedPolyphonicItem != null &&
+                                               previousReplaceItem.UsedPolyphonicItem != null &&
+                                               currentReplaceItem.UsedPolyphonicItem.Equals(previousReplaceItem.UsedPolyphonicItem);
+
+                    if (isSamePolyphonicItem)
                     {
-                        if ((i == 0 && previousReplaceText == previousReplaceItem.TargetText) ||
-                            (i > 0 && alternativeTexts[i] == previousReplaceText))
-                        {
-                            return i;
-                        }
+                        return GetSelectionIndex(previousReplaceItem);
                     }
                 }
             }
@@ -706,6 +840,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                         {
                             _work多音字Index = 0;
                             _do多音字替换Working = true;
+                            _completedGroups.Clear();
 
                             refresh多音字替换Ui();
                         }
@@ -850,7 +985,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             }
 
             _dgv多音字方案表Changed = true;
-            refresh多音字替换Ui();
+            refreshButtonStates();
         }
 
         /// <summary>
@@ -872,7 +1007,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             }
 
             _dgv多音字方案表Changed = true;
-            refresh多音字替换Ui();
+            refreshButtonStates();
         }
 
         /// <summary>
@@ -883,7 +1018,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         private void dgv_多音字方案_CellEndEdit(object sender, DataGridViewCellEventArgs e)
         {
             _dgv多音字方案表Changed = true;
-            refresh多音字替换Ui();
+            refreshButtonStates();
         }
 
         /// <summary>
@@ -894,7 +1029,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         private void dgv_多音字方案_UserDeletedRow(object sender, DataGridViewRowEventArgs e)
         {
             _dgv多音字方案表Changed = true;
-            refresh多音字替换Ui();
+            refreshButtonStates();
         }
 
         /// <summary>
@@ -905,7 +1040,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         private void dgv_多音字方案_RowsAdded(object sender, DataGridViewRowsAddedEventArgs e)
         {
             _dgv多音字方案表Changed = true;
-            refresh多音字替换Ui();
+            refreshButtonStates();
         }
 
         /// <summary>
@@ -915,34 +1050,29 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// <param name="e">事件参数。</param>
         private void 自动生成ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            // 获取当前选中的单元格
             if (this.dgv_多音字方案.SelectedCells.Count > 0)
             {
                 DataGridViewCell selectedCell = this.dgv_多音字方案.SelectedCells[0];
                 int rowIndex = selectedCell.RowIndex;
-                int colIndex = selectedCell.ColumnIndex - 1; // 转换为0-based的方案索引
+                int colIndex = selectedCell.ColumnIndex - 1;
 
                 if (colIndex >= 0 && rowIndex >= 0)
                 {
-                    // 获取该行第一个单元格的内容
                     DataGridViewCell firstCell = this.dgv_多音字方案.Rows[rowIndex].Cells[0];
                     string originalText = firstCell.Value?.ToString() ?? string.Empty;
 
                     if (!string.IsNullOrWhiteSpace(originalText))
                     {
-                        // 生成替换文本
                         PolyphonicItem pi = new PolyphonicItem() { OriginalText = originalText };
                         if (colIndex < pi.PolyphonicSchemes.Length)
                         {
                             pi.PolyphonicSchemes[colIndex].BuildDefaultReplaceStrings(originalText);
                             string replaceText = string.Join("\r\n", pi.PolyphonicSchemes[colIndex].ReplaceStrings);
 
-                            // 填充替换文本到选中的单元格
                             selectedCell.Value = replaceText;
 
-                            // 标记方案表已更改
                             _dgv多音字方案表Changed = true;
-                            refresh多音字替换Ui();
+                            refreshButtonStates();
                         }
                     }
                 }
@@ -958,9 +1088,10 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         {
             if (_do多音字替换Working == true && _work多音字Index > 0)
             {
-                save多音字Working(_working多音字Array[_work多音字Index]);
-                _work多音字Index--;
+                int currentSelection = GetSelectionIndexFromUi();
+                SetSelectionIndex(_working多音字Array[_work多音字Index], currentSelection);
 
+                _work多音字Index--;
                 refresh多音字替换Ui();
             }
         }
@@ -974,9 +1105,20 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         {
             if (_do多音字替换Working == true && _work多音字Index < _working多音字Array.Length - 1)
             {
-                save多音字Working(_working多音字Array[_work多音字Index]);
-                _work多音字Index++;
+                int currentSelection = GetSelectionIndexFromUi();
+                SetSelectionIndex(_working多音字Array[_work多音字Index], currentSelection);
 
+                var nextItem = _working多音字Array[_work多音字Index + 1];
+                var currentItem = _working多音字Array[_work多音字Index];
+
+                bool isSameGroup = nextItem.UsedPolyphonicItem.Equals(currentItem.UsedPolyphonicItem);
+
+                if (!isSameGroup)
+                {
+                    _completedGroups.Add(currentItem.UsedPolyphonicItem);
+                }
+
+                _work多音字Index++;
                 refresh多音字替换Ui();
             }
         }
@@ -990,14 +1132,24 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         {
             if (_do多音字替换Working == true)
             {
-                var subArray = _working多音字Array.Where(a => a.UsedPolyphonicItem.Equals(_working多音字Array[_work多音字Index].UsedPolyphonicItem) == true).ToArray();
-                int index = Array.IndexOf(subArray, _working多音字Array[_work多音字Index]);
-                for (int i = index; i < subArray.Length; i++)
+                var currentGroupItems = GetCurrentGroupItems();
+                if (currentGroupItems.Length == 0) return;
+
+                int currentIndexInGroup = Array.IndexOf(currentGroupItems, _working多音字Array[_work多音字Index]);
+
+                int currentSelection = GetSelectionIndexFromUi();
+
+                for (int i = currentIndexInGroup; i < currentGroupItems.Length; i++)
                 {
-                    save多音字Working(_working多音字Array[i]);
+                    if (!currentGroupItems[i].IsReplaceTextUpdated)
+                    {
+                        SetSelectionIndex(currentGroupItems[i], currentSelection);
+                    }
                 }
 
-                _work多音字Index += subArray.Length - index;
+                _completedGroups.Add(_working多音字Array[_work多音字Index].UsedPolyphonicItem);
+
+                _work多音字Index += currentGroupItems.Length - currentIndexInGroup;
                 refresh多音字替换Ui();
             }
         }
@@ -1011,7 +1163,18 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         {
             if (_do多音字替换Working == true)
             {
-                save多音字Working(_working多音字Array[_work多音字Index]);
+                int currentSelection = GetSelectionIndexFromUi();
+                SetSelectionIndex(_working多音字Array[_work多音字Index], currentSelection);
+
+                for (int i = _work多音字Index + 1; i < _working多音字Array.Length; i++)
+                {
+                    if (!_working多音字Array[i].IsReplaceTextUpdated)
+                    {
+                        int selection = GetLastConfirmedSelectionForItem(i);
+                        SetSelectionIndex(_working多音字Array[i], selection);
+                    }
+                }
+
                 this.tb_最终文本.Text = ReplaceItem.ApplyReplacements(this.tb_最终文本.Text, _working多音字Array);
 
                 bt_取消应用替换结果_Click(sender, e);

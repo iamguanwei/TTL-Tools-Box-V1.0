@@ -6,7 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using GW.TTLtoolsBox.Core.FileAccesser;
-using GW.TTLtoolsBox.Core.SystemOption.TtlEngine;
+using GW.TTLtoolsBox.Core.TtlEngine;
 using GW.TTLtoolsBox.WinFormUi.Base;
 using GW.TTLtoolsBox.WinFormUi.Helper;
 using GW.TTLtoolsBox.WinFormUi.Manager;
@@ -114,14 +114,10 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// <summary>
         /// 初始化TtlSchemePanel类的新实例。
         /// </summary>
-        /// <param name="tempFolder">临时文件夹路径。</param>
+        /// <param name="tempFolder">临时文件夹路径（已废弃，请使用无参构造函数）。</param>
+        [Obsolete("请使用无参构造函数，预览文件夹已固定为程序目录下的RoldVoice文件夹。")]
         public TtlSchemePanel(string tempFolder) : this()
         {
-            if (!string.IsNullOrWhiteSpace(tempFolder))
-            {
-                TTL角色预览声音_文件夹路径 = tempFolder;
-                TTL角色预览声音_文件 = Path.Combine(tempFolder, "角色声音预览文本.txt");
-            }
         }
 
         #endregion
@@ -138,10 +134,48 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// </summary>
         public PreviewVoiceManager PreviewVoiceManager { get; set; }
 
+        private VoiceGenerationTaskQueue _voiceGenerationTaskQueue;
+
         /// <summary>
         /// 获取或设置语音生成任务队列。
         /// </summary>
-        public VoiceGenerationTaskQueue VoiceGenerationTaskQueue { get; set; }
+        public VoiceGenerationTaskQueue VoiceGenerationTaskQueue
+        {
+            get => _voiceGenerationTaskQueue;
+            set
+            {
+                if (_voiceGenerationTaskQueue != null)
+                {
+                    _voiceGenerationTaskQueue.PreviewTaskCompleted -= VoiceGenerationTaskQueue_PreviewTaskCompleted;
+                }
+                _voiceGenerationTaskQueue = value;
+                if (_voiceGenerationTaskQueue != null)
+                {
+                    _voiceGenerationTaskQueue.PreviewTaskCompleted += VoiceGenerationTaskQueue_PreviewTaskCompleted;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 事件处理：预览任务完成。
+        /// </summary>
+        private void VoiceGenerationTaskQueue_PreviewTaskCompleted(object sender, PreviewTaskCompletedEventArgs e)
+        {
+            string engineId = getCurrentEngineId();
+            if (string.IsNullOrWhiteSpace(engineId) || string.IsNullOrWhiteSpace(e.SourceName))
+            {
+                return;
+            }
+
+            if (e.Success)
+            {
+                PreviewVoiceManager?.SetStatus(engineId, e.SourceName, PreviewVoiceStatus.已生成, e.Speed, e.Volume);
+            }
+            else
+            {
+                PreviewVoiceManager?.SetStatus(engineId, e.SourceName, PreviewVoiceStatus.生成失败, e.Speed, e.Volume);
+            }
+        }
 
         /// <summary>
         /// 获取或设置项目文件实例。
@@ -177,7 +211,80 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// </summary>
         public void InitializePanel()
         {
+            initConnectionStatusTimer();
             initTTL方案Ui();
+        }
+
+        /// <summary>
+        /// 初始化连接状态定时器。
+        /// </summary>
+        private void initConnectionStatusTimer()
+        {
+            if (_connectionStatusTimer == null)
+            {
+                _connectionStatusTimer = new System.Windows.Forms.Timer();
+                _connectionStatusTimer.Interval = 1000;
+                _connectionStatusTimer.Tick += connectionStatusTimer_Tick;
+                _connectionStatusTimer.Start();
+            }
+        }
+
+        /// <summary>
+        /// 定时器回调：处理连接状态倒计时。
+        /// </summary>
+        private void connectionStatusTimer_Tick(object sender, EventArgs e)
+        {
+            handleConnectionStatusCountdown();
+        }
+
+        /// <summary>
+        /// 处理连接状态倒计时。
+        /// </summary>
+        private void handleConnectionStatusCountdown()
+        {
+            switch (_ttlEngineConnectionStatus)
+            {
+                case TtlEngineConnectionStatus.连接中:
+                    _ttlEngineConnectionCountdown--;
+                    if (_ttlEngineConnectionCountdown <= 0)
+                    {
+                        _ttlEngineConnectionStatus = TtlEngineConnectionStatus.连接失败;
+                        _ttlEngineRetryCountdown = Constants.连接失败_重试间隔秒数;
+                    }
+                    updateTtlEngineConnectionStatusLabel();
+                    OnConnectionStatusChanged(_ttlEngineConnectionStatus, _ttlEngineConnectionCountdown, _ttlEngineRetryCountdown);
+                    break;
+
+                case TtlEngineConnectionStatus.连接成功:
+                    _ttlEngineRetryCountdown--;
+                    if (_ttlEngineRetryCountdown <= 0)
+                    {
+                        start连接TTL引擎();
+                    }
+                    else
+                    {
+                        updateTtlEngineConnectionStatusLabel();
+                        OnConnectionStatusChanged(_ttlEngineConnectionStatus, 0, _ttlEngineRetryCountdown);
+                    }
+                    break;
+
+                case TtlEngineConnectionStatus.连接失败:
+                    _ttlEngineRetryCountdown--;
+                    if (_ttlEngineRetryCountdown <= 0)
+                    {
+                        start连接TTL引擎();
+                    }
+                    else
+                    {
+                        updateTtlEngineConnectionStatusLabel();
+                        OnConnectionStatusChanged(_ttlEngineConnectionStatus, 0, _ttlEngineRetryCountdown);
+                    }
+                    break;
+
+                case TtlEngineConnectionStatus.未连接:
+                default:
+                    break;
+            }
         }
 
         /// <summary>
@@ -438,6 +545,11 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         private int _ttlEngineRetryCountdown = 0;
 
         /// <summary>
+        /// 连接状态更新定时器。
+        /// </summary>
+        private System.Windows.Forms.Timer _connectionStatusTimer = null;
+
+        /// <summary>
         /// 查找SpeakerInfo的委托。
         /// </summary>
         private Func<string, SpeakerInfo> _findSpeakerByShowName;
@@ -603,6 +715,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             if (currentEngine == null)
             {
                 _ttlEngineConnectionStatus = TtlEngineConnectionStatus.未连接;
+                OnConnectionStatusChanged(_ttlEngineConnectionStatus, 0, 0);
                 updateTtlEngineConnectionStatusLabel();
                 refreshTTL方案Ui();
                 return;
@@ -616,6 +729,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
 
             _ttlEngineConnectionStatus = TtlEngineConnectionStatus.连接中;
             _ttlEngineConnectionCountdown = timeoutSeconds;
+            OnConnectionStatusChanged(_ttlEngineConnectionStatus, _ttlEngineConnectionCountdown, 0);
             updateTtlEngineConnectionStatusLabel();
             refreshTTL方案Ui();
 
@@ -625,6 +739,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
 
                 _ttlEngineConnectionStatus = TtlEngineConnectionStatus.连接成功;
                 _ttlEngineRetryCountdown = Constants.连接成功_验证间隔秒数;
+                OnConnectionStatusChanged(_ttlEngineConnectionStatus, 0, _ttlEngineRetryCountdown);
 
                 if (currentEngine.Speakers == null || currentEngine.Speakers.Length == 0)
                 {
@@ -641,6 +756,12 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             {
                 _ttlEngineConnectionStatus = TtlEngineConnectionStatus.连接失败;
                 _ttlEngineRetryCountdown = Constants.连接失败_重试间隔秒数;
+                OnConnectionStatusChanged(_ttlEngineConnectionStatus, 0, _ttlEngineRetryCountdown);
+
+                if (currentEngine.Speakers != null && currentEngine.Speakers.Length > 0)
+                {
+                    bindSpeakersToGrid(currentEngine);
+                }
             }
 
             updateTtlEngineConnectionStatusLabel();
@@ -752,9 +873,8 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             var speakerArray = ttl.Speakers.Select(s => s.Clone()).ToArray();
             if (speakerArray != null && speakerArray.Length > 0)
             {
-                this.dgv_TTL方案_朗读者参数配置.DataSource = speakerArray;
                 setupSpeakerGridColumns();
-                this.dgv_TTL方案_朗读者参数配置.Refresh();
+                this.dgv_TTL方案_朗读者参数配置.DataSource = speakerArray;
                 this.dgv_TTL方案_朗读者参数配置.AutoResizeColumns(DataGridViewAutoSizeColumnsMode.AllCells);
             }
             else
@@ -767,11 +887,12 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         }
 
         /// <summary>
-        /// 设置朗读者表格的列属性，只包含源名称和声音预览两列。
+        /// 设置朗读者表格的列属性，包含源名称、速度和声音预览三列。
         /// </summary>
         private void setupSpeakerGridColumns()
         {
             this.dgv_TTL方案_朗读者参数配置.AutoGenerateColumns = false;
+            this.dgv_TTL方案_朗读者参数配置.ShowCellToolTips = false;
 
             this.dgv_TTL方案_朗读者参数配置.SelectionMode = DataGridViewSelectionMode.CellSelect;
             this.dgv_TTL方案_朗读者参数配置.DefaultCellStyle.SelectionBackColor = this.dgv_TTL方案_朗读者参数配置.DefaultCellStyle.BackColor;
@@ -789,6 +910,22 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             sourceNameColumn.MinimumWidth = 200;
             sourceNameColumn.ReadOnly = true;
             this.dgv_TTL方案_朗读者参数配置.Columns.Add(sourceNameColumn);
+
+            DataGridViewTextBoxColumn speedColumn = new DataGridViewTextBoxColumn();
+            speedColumn.Name = speedColumn.DataPropertyName = "Speed";
+            speedColumn.HeaderText = "速度(%)";
+            speedColumn.MinimumWidth = 80;
+            speedColumn.ReadOnly = false;
+            speedColumn.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            this.dgv_TTL方案_朗读者参数配置.Columns.Add(speedColumn);
+
+            DataGridViewTextBoxColumn volumeColumn = new DataGridViewTextBoxColumn();
+            volumeColumn.Name = volumeColumn.DataPropertyName = "Volume";
+            volumeColumn.HeaderText = "音量(%)";
+            volumeColumn.MinimumWidth = 80;
+            volumeColumn.ReadOnly = false;
+            volumeColumn.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            this.dgv_TTL方案_朗读者参数配置.Columns.Add(volumeColumn);
 
             DataGridViewButtonColumn voicePreviewColumn = new DataGridViewButtonColumn();
             voicePreviewColumn.Name = "VoicePreview";
@@ -811,6 +948,12 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
 
             this.dgv_TTL方案_朗读者参数配置.CellFormatting -= dgv_TTL方案_朗读者参数配置_CellFormatting;
             this.dgv_TTL方案_朗读者参数配置.CellFormatting += dgv_TTL方案_朗读者参数配置_CellFormatting;
+
+            this.dgv_TTL方案_朗读者参数配置.CellValidating -= dgv_TTL方案_朗读者参数配置_CellValidating;
+            this.dgv_TTL方案_朗读者参数配置.CellValidating += dgv_TTL方案_朗读者参数配置_CellValidating;
+
+            this.dgv_TTL方案_朗读者参数配置.CellEndEdit -= dgv_TTL方案_朗读者参数配置_CellEndEdit;
+            this.dgv_TTL方案_朗读者参数配置.CellEndEdit += dgv_TTL方案_朗读者参数配置_CellEndEdit;
 
             this.dgv_TTL方案_朗读者参数配置.AutoResizeColumns(DataGridViewAutoSizeColumnsMode.AllCells);
         }
@@ -843,29 +986,29 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         private void update自动生成全部朗读者预览音频按钮状态(bool refreshStatus = false)
         {
             bool hasSpeakersWithoutPreview = false;
-            var currentEngine = TtlSchemeController?.CurrentEngineConnector;
-            if (currentEngine != null && currentEngine.Speakers != null)
+            string engineId = getCurrentEngineId();
+
+            foreach (DataGridViewRow row in this.dgv_TTL方案_朗读者参数配置.Rows)
             {
-                string engineId = currentEngine.Id;
-                foreach (var speaker in currentEngine.Speakers)
+                if (row.DataBoundItem is SpeakerInfo speaker)
                 {
                     PreviewVoiceStatus status;
                     if (refreshStatus)
                     {
-                        status = PreviewVoiceManager?.RefreshStatus(engineId, speaker.SourceName) ?? PreviewVoiceStatus.未生成;
+                        status = PreviewVoiceManager?.RefreshStatus(engineId, speaker.SourceName, speaker.Speed, speaker.Volume) ?? PreviewVoiceStatus.未生成;
                     }
                     else
                     {
-                        status = PreviewVoiceManager?.GetStatus(engineId, speaker.SourceName) ?? PreviewVoiceStatus.未生成;
+                        status = PreviewVoiceManager?.GetStatus(engineId, speaker.SourceName, speaker.Speed, speaker.Volume) ?? PreviewVoiceStatus.未生成;
                     }
                     if (status == PreviewVoiceStatus.未生成)
                     {
                         hasSpeakersWithoutPreview = true;
-                        break;
                     }
                 }
             }
-            this.bt_TTL方案_自动生成全部朗读者预览音频.Enabled = currentEngine != null && hasSpeakersWithoutPreview;
+
+            this.bt_TTL方案_自动生成全部朗读者预览音频.Enabled = hasSpeakersWithoutPreview;
         }
 
         /// <summary>
@@ -880,73 +1023,87 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 return;
             }
 
-            PreviewVoiceStatus status = PreviewVoiceManager?.GetStatus(engineId, sourceName) ?? PreviewVoiceStatus.未生成;
-
-            if (status == PreviewVoiceStatus.已生成)
-            {
-                string filePath = PreviewVoiceManager?.GetPreviewFilePath(engineId, sourceName);
-                if (!string.IsNullOrWhiteSpace(filePath) && File.Exists(filePath))
-                {
-                    _playSound?.Invoke(filePath);
-                }
-                return;
-            }
-
-            if (status == PreviewVoiceStatus.生成中)
-            {
-                return;
-            }
-
-            bool alreadyHasPreviewTask = VoiceGenerationTaskQueue?.Tasks.Any(t =>
-                t.IsPreview && t.PreviewSourceName == sourceName && t.Status != VoiceGenerationTaskStatus.已完成) ?? false;
-            if (alreadyHasPreviewTask)
-            {
-                return;
-            }
-
             SpeakerInfo speakerInfo = _findSpeakerByShowName?.Invoke(sourceName);
             if (speakerInfo == null)
             {
                 return;
             }
 
-            string previewText = _getPreviewText?.Invoke() ?? Constants.TTL角色预览声音_文本;
-            string outputPath = PreviewVoiceManager?.GetPreviewFilePath(engineId, sourceName);
-
-            VoiceGenerationTask previewTask = new VoiceGenerationTask();
-            previewTask.IsPreview = true;
-            previewTask.PreviewSourceName = sourceName;
-            previewTask.SaveFile = outputPath;
-            previewTask.Speed = 100;
-            previewTask.SpaceTime = 1f;
-            previewTask.Status = VoiceGenerationTaskStatus.排队中;
-            previewTask.ProgressDetail = "预览任务排队中...";
-
-            VoiceGenerationTaskItem taskItem = new VoiceGenerationTaskItem
+            int speed = speakerInfo.Speed;
+            int volume = speakerInfo.Volume;
             {
-                TempFile = Path.Combine(TTL角色预览声音_文件夹路径, $"preview_{previewTask.Id}.wav"),
-                Speaker = speakerInfo,
-                Text = previewText,
-                EndNewLine = 0
-            };
-            previewTask.Items = new VoiceGenerationTaskItem[] { taskItem };
+                PreviewVoiceStatus status = PreviewVoiceManager?.GetStatus(engineId, sourceName, speed, volume) ?? PreviewVoiceStatus.未生成;
 
-            int insertIndex = 0;
-            if (VoiceGenerationTaskQueue != null)
-            {
-                for (int i = 0; i < VoiceGenerationTaskQueue.Tasks.Count; i++)
+                if (status == PreviewVoiceStatus.已生成)
                 {
-                    if (VoiceGenerationTaskQueue.Tasks[i].IsPreview)
+                    string filePath = PreviewVoiceManager?.GetPreviewFilePath(engineId, sourceName, speed, volume);
+                    if (!string.IsNullOrWhiteSpace(filePath) && File.Exists(filePath))
                     {
-                        insertIndex = i + 1;
+                        _playSound?.Invoke(filePath);
                     }
+                    return;
                 }
-                VoiceGenerationTaskQueue.Tasks.Insert(insertIndex, previewTask);
+
+                if (status == PreviewVoiceStatus.生成中)
+                {
+                    return;
+                }
+
+                bool alreadyHasPreviewTask = VoiceGenerationTaskQueue?.Tasks.Any(t =>
+                    t.IsPreview && t.PreviewSourceName == sourceName && t.Speed == speed && t.Volume == volume && t.Status != VoiceGenerationTaskStatus.已完成) ?? false;
+                if (alreadyHasPreviewTask)
+                {
+                    return;
+                }
+
+                if (VoiceGenerationTaskQueue != null)
+                {
+                    string previewText = _getPreviewText?.Invoke() ?? Constants.TTL角色预览声音_文本;
+                    string outputPath = PreviewVoiceManager?.GetPreviewFilePath(engineId, sourceName, speed, volume);
+
+                    VoiceGenerationTask previewTask = new VoiceGenerationTask();
+                    previewTask.IsPreview = true;
+                    previewTask.PreviewSourceName = sourceName;
+                    previewTask.SaveFile = outputPath;
+                    previewTask.Speed = speed;
+                    previewTask.Volume = volume;
+                    previewTask.SpaceTime = 1f;
+                    previewTask.Status = VoiceGenerationTaskStatus.排队中;
+                    previewTask.ProgressDetail = "预览任务排队中...";
+
+                    string tempPath = VoiceGenerationTaskQueue.TempFolder;
+
+                    VoiceGenerationTaskItem taskItem = new VoiceGenerationTaskItem
+                    {
+                        Speaker = speakerInfo,
+                        Text = previewText,
+                        EndNewLine = 0,
+                        Speed = speed,
+                        Volume = volume
+                    };
+                    taskItem.SetTempFile(tempPath, previewTask.Id);
+                    previewTask.Items = new VoiceGenerationTaskItem[] { taskItem };
+
+                    int insertIndex = VoiceGenerationTaskQueue?.Tasks.Count ?? 0;
+                    for (int i = 0; i < VoiceGenerationTaskQueue.Tasks.Count; i++)
+                    {
+                        if (!VoiceGenerationTaskQueue.Tasks[i].IsPreview)
+                        {
+                            insertIndex = i;
+                            break;
+                        }
+                    }
+                    VoiceGenerationTaskQueue.Tasks.Insert(insertIndex, previewTask);
+
+                    if (VoiceGenerationTaskQueue.IsRunning && VoiceGenerationTaskQueue.CurrentTask?.IsPreview != true)
+                    {
+                        VoiceGenerationTaskQueue.Stop();
+                    }
+                    VoiceGenerationTaskQueue.Start();
+                }
             }
 
-            PreviewVoiceManager?.SetStatus(engineId, sourceName, PreviewVoiceStatus.生成中);
-
-            VoiceGenerationTaskQueue?.Start();
+            PreviewVoiceManager?.SetStatus(engineId, sourceName, PreviewVoiceStatus.生成中, speed, volume);
         }
 
         /// <summary>
@@ -962,7 +1119,20 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 return PreviewVoiceStatus.未生成;
             }
 
-            return PreviewVoiceManager?.GetStatus(engineId, sourceName) ?? PreviewVoiceStatus.未生成;
+            SpeakerInfo speakerInfo = null;
+            foreach (DataGridViewRow row in this.dgv_TTL方案_朗读者参数配置.Rows)
+            {
+                if (row.DataBoundItem is SpeakerInfo speaker && speaker.SourceName == sourceName)
+                {
+                    speakerInfo = speaker;
+                    break;
+                }
+            }
+
+            int speed = speakerInfo?.Speed ?? 100;
+            int volume = speakerInfo?.Volume ?? 100;
+
+            return PreviewVoiceManager?.GetStatus(engineId, sourceName, speed, volume) ?? PreviewVoiceStatus.未生成;
         }
 
         #endregion
@@ -1014,8 +1184,8 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 OnStopVoiceGenerationTaskQueueRequested();
             }
 
-            // 如果选择"无"方案，传入None_Engine_Id而不是null
-            string engineIdToSelect = (ttl == null) ? Constants.None_Engine_Id : ttl.Id;
+            // 如果选择"无"方案，传入无_引擎标识而不是null
+            string engineIdToSelect = (ttl == null) ? Constants.无_引擎标识 : ttl.Id;
             TtlSchemeController?.SelectEngine(engineIdToSelect);
 
             _ttlEngineConnectionStatus = TtlEngineConnectionStatus.未连接;
@@ -1128,7 +1298,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             string engineId = currentEngine.Id;
             foreach (var speaker in currentEngine.Speakers)
             {
-                PreviewVoiceStatus status = PreviewVoiceManager?.RefreshStatus(engineId, speaker.SourceName) ?? PreviewVoiceStatus.未生成;
+                PreviewVoiceStatus status = PreviewVoiceManager?.RefreshStatus(engineId, speaker.SourceName, speaker.Speed) ?? PreviewVoiceStatus.未生成;
                 if (status != PreviewVoiceStatus.已生成 && status != PreviewVoiceStatus.生成中)
                 {
                     requestPreviewVoice(speaker.SourceName);
@@ -1163,6 +1333,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             var voicePreviewColumn = this.dgv_TTL方案_朗读者参数配置.Columns["VoicePreview"];
             if (voicePreviewColumn != null && e.ColumnIndex == voicePreviewColumn.Index && e.RowIndex >= 0)
             {
+                this.dgv_TTL方案_朗读者参数配置.Rows[e.RowIndex].Cells[e.ColumnIndex].ToolTipText = string.Empty;
                 if (this.dgv_TTL方案_朗读者参数配置.Rows[e.RowIndex].DataBoundItem is SpeakerInfo speaker)
                 {
                     PreviewVoiceStatus status = getPreviewVoiceStatus(speaker.SourceName);
@@ -1200,6 +1371,167 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         private void bt_TTL方案_打开角色声音预览目录_Click(object sender, EventArgs e)
         {
             System.Diagnostics.Process.Start("explorer.exe", TTL角色预览声音_文件夹路径);
+        }
+
+        /// <summary>
+        /// 事件处理：点击"清理无效的预览音频"按钮。
+        /// </summary>
+        /// <param name="sender">发送者。</param>
+        /// <param name="e">事件参数。</param>
+        private void bt_TTL方案_清理无效的预览音频_Click(object sender, EventArgs e)
+        {
+            string confirmMessage = "此功能将清理当前引擎下所有无效的预览音频文件：" +
+                "\n\n• 不在当前角色列表中的音频文件" +
+                "\n• 生成过程中的临时文件（.generating）" +
+                "\n\n是否立即执行清理？";
+            DialogResult result = MessageBox.Show(confirmMessage, "清理无效的预览音频", MessageBoxButtons.OKCancel, MessageBoxIcon.Question);
+            if (result != DialogResult.OK)
+            {
+                return;
+            }
+
+            string engineId = getCurrentEngineId();
+            if (string.IsNullOrWhiteSpace(engineId))
+            {
+                return;
+            }
+
+            var currentEngine = TtlSchemeController?.CurrentEngineConnector;
+            if (currentEngine == null || currentEngine.Speakers == null)
+            {
+                return;
+            }
+
+            HashSet<string> validFileNames = new HashSet<string>();
+            foreach (var speaker in currentEngine.Speakers)
+            {
+                string safeSourceName = getSafeFileName(speaker.SourceName);
+                string validFileName = $"{engineId}_{safeSourceName}_{speaker.Speed}_{speaker.Volume}.mp3";
+                validFileNames.Add(validFileName);
+            }
+
+            if (!Directory.Exists(TTL角色预览声音_文件夹路径))
+            {
+                return;
+            }
+
+            int deletedCount = 0;
+            var files = Directory.GetFiles(TTL角色预览声音_文件夹路径, $"{engineId}_*.mp3");
+            foreach (var file in files)
+            {
+                string fileName = Path.GetFileName(file);
+                if (!validFileNames.Contains(fileName))
+                {
+                    try
+                    {
+                        File.Delete(file);
+                        deletedCount++;
+                    }
+                    catch { }
+                }
+            }
+
+            var generatingFiles = Directory.GetFiles(TTL角色预览声音_文件夹路径, $"{engineId}_*.generating");
+            foreach (var file in generatingFiles)
+            {
+                try
+                {
+                    File.Delete(file);
+                    deletedCount++;
+                }
+                catch { }
+            }
+
+            if (deletedCount > 0)
+            {
+                MessageBox.Show($"已清理 {deletedCount} 个无效的预览音频文件", "清理完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            else
+            {
+                MessageBox.Show("没有发现无效的预览音频文件", "清理完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+
+        /// <summary>
+        /// 获取安全的文件名（移除不允许的字符）。
+        /// </summary>
+        /// <param name="name">原始名称。</param>
+        /// <returns>安全的文件名。</returns>
+        private string getSafeFileName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return string.Empty;
+            }
+
+            char[] invalidChars = Path.GetInvalidFileNameChars();
+            return string.Join("_", name.Split(invalidChars));
+        }
+
+        /// <summary>
+        /// 事件处理：单元格验证，用于验证速度列的输入值。
+        /// </summary>
+        /// <param name="sender">发送者。</param>
+        /// <param name="e">事件参数。</param>
+        private void dgv_TTL方案_朗读者参数配置_CellValidating(object sender, DataGridViewCellValidatingEventArgs e)
+        {
+            var speedColumn = this.dgv_TTL方案_朗读者参数配置.Columns["Speed"];
+            if (speedColumn != null && e.ColumnIndex == speedColumn.Index && e.RowIndex >= 0)
+            {
+                string inputValue = e.FormattedValue?.ToString() ?? string.Empty;
+                if (int.TryParse(inputValue, out int speed))
+                {
+                    if (speed < 50 || speed > 200)
+                    {
+                        e.Cancel = true;
+                        MessageBox.Show("速度值必须在50-200之间", "输入错误", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    }
+                }
+                else if (!string.IsNullOrWhiteSpace(inputValue))
+                {
+                    e.Cancel = true;
+                    MessageBox.Show("请输入有效的数字", "输入错误", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            }
+
+            var volumeColumn = this.dgv_TTL方案_朗读者参数配置.Columns["Volume"];
+            if (volumeColumn != null && e.ColumnIndex == volumeColumn.Index && e.RowIndex >= 0)
+            {
+                string inputValue = e.FormattedValue?.ToString() ?? string.Empty;
+                if (int.TryParse(inputValue, out int volume))
+                {
+                    if (volume < 50 || volume > 200)
+                    {
+                        e.Cancel = true;
+                        MessageBox.Show("音量值必须在50-200之间", "输入错误", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    }
+                }
+                else if (!string.IsNullOrWhiteSpace(inputValue))
+                {
+                    e.Cancel = true;
+                    MessageBox.Show("请输入有效的数字", "输入错误", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 事件处理：单元格编辑结束，用于刷新预览按钮状态。
+        /// </summary>
+        private void dgv_TTL方案_朗读者参数配置_CellEndEdit(object sender, DataGridViewCellEventArgs e)
+        {
+            var speedColumn = this.dgv_TTL方案_朗读者参数配置.Columns["Speed"];
+            var volumeColumn = this.dgv_TTL方案_朗读者参数配置.Columns["Volume"];
+
+            if ((speedColumn != null && e.ColumnIndex == speedColumn.Index) ||
+                (volumeColumn != null && e.ColumnIndex == volumeColumn.Index))
+            {
+                if (e.RowIndex >= 0)
+                {
+                    this.dgv_TTL方案_朗读者参数配置.InvalidateRow(e.RowIndex);
+
+                    update自动生成全部朗读者预览音频按钮状态();
+                }
+            }
         }
 
         #endregion

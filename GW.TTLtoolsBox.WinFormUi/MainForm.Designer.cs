@@ -28,7 +28,6 @@ namespace GW.TTLtoolsBox.WinFormUi
         /// </summary>
         private void InitializeComponent()
         {
-            this.components = new System.ComponentModel.Container();
             this.ms_主菜单 = new System.Windows.Forms.MenuStrip();
             this.文件FToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.新建NToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -53,20 +52,14 @@ namespace GW.TTLtoolsBox.WinFormUi
             this.pan_语音生成 = new System.Windows.Forms.Panel();
             this.ss_主状态栏 = new System.Windows.Forms.StatusStrip();
             this.tssl_TTL连接状态显示 = new System.Windows.Forms.ToolStripStatusLabel();
+            this.最近打开的项目HToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.ms_主菜单.SuspendLayout();
             this.pan_主框架.SuspendLayout();
             this.tc_工具箱.SuspendLayout();
-            this.tp_TTL方案.SuspendLayout();
             this.tp_角色映射.SuspendLayout();
-            this.pan_角色映射.SuspendLayout();
-            this.tp_文本拆分.SuspendLayout();
-            this.tp_多音字替换.SuspendLayout();
             this.tp_角色和情绪指定.SuspendLayout();
-            this.pan_角色和情绪指定.SuspendLayout();
             this.tp_语音生成预处理.SuspendLayout();
-            this.pan_语音生成预处理.SuspendLayout();
             this.tp_语音生成.SuspendLayout();
-            this.pan_语音生成.SuspendLayout();
             this.ss_主状态栏.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -85,6 +78,7 @@ namespace GW.TTLtoolsBox.WinFormUi
             this.文件FToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.新建NToolStripMenuItem,
             this.打开OToolStripMenuItem,
+            this.最近打开的项目HToolStripMenuItem,
             this.toolStripMenuItem2,
             this.保存SToolStripMenuItem,
             this.另存为AToolStripMenuItem,
@@ -97,45 +91,45 @@ namespace GW.TTLtoolsBox.WinFormUi
             // 新建NToolStripMenuItem
             // 
             this.新建NToolStripMenuItem.Name = "新建NToolStripMenuItem";
-            this.新建NToolStripMenuItem.Size = new System.Drawing.Size(137, 22);
+            this.新建NToolStripMenuItem.Size = new System.Drawing.Size(186, 22);
             this.新建NToolStripMenuItem.Text = "新建(&N)...";
             this.新建NToolStripMenuItem.Click += new System.EventHandler(this.新建NToolStripMenuItem_Click);
             // 
             // 打开OToolStripMenuItem
             // 
             this.打开OToolStripMenuItem.Name = "打开OToolStripMenuItem";
-            this.打开OToolStripMenuItem.Size = new System.Drawing.Size(137, 22);
+            this.打开OToolStripMenuItem.Size = new System.Drawing.Size(186, 22);
             this.打开OToolStripMenuItem.Text = "打开(&O)...";
             this.打开OToolStripMenuItem.Click += new System.EventHandler(this.打开OToolStripMenuItem_Click);
             // 
             // toolStripMenuItem2
             // 
             this.toolStripMenuItem2.Name = "toolStripMenuItem2";
-            this.toolStripMenuItem2.Size = new System.Drawing.Size(134, 6);
+            this.toolStripMenuItem2.Size = new System.Drawing.Size(183, 6);
             // 
             // 保存SToolStripMenuItem
             // 
             this.保存SToolStripMenuItem.Name = "保存SToolStripMenuItem";
-            this.保存SToolStripMenuItem.Size = new System.Drawing.Size(137, 22);
+            this.保存SToolStripMenuItem.Size = new System.Drawing.Size(186, 22);
             this.保存SToolStripMenuItem.Text = "保存(&S)";
             this.保存SToolStripMenuItem.Click += new System.EventHandler(this.保存SToolStripMenuItem_Click);
             // 
             // 另存为AToolStripMenuItem
             // 
             this.另存为AToolStripMenuItem.Name = "另存为AToolStripMenuItem";
-            this.另存为AToolStripMenuItem.Size = new System.Drawing.Size(137, 22);
+            this.另存为AToolStripMenuItem.Size = new System.Drawing.Size(186, 22);
             this.另存为AToolStripMenuItem.Text = "另存为(&A)...";
             this.另存为AToolStripMenuItem.Click += new System.EventHandler(this.另存为AToolStripMenuItem_Click);
             // 
             // toolStripMenuItem1
             // 
             this.toolStripMenuItem1.Name = "toolStripMenuItem1";
-            this.toolStripMenuItem1.Size = new System.Drawing.Size(134, 6);
+            this.toolStripMenuItem1.Size = new System.Drawing.Size(183, 6);
             // 
             // 退出EToolStripMenuItem
             // 
             this.退出EToolStripMenuItem.Name = "退出EToolStripMenuItem";
-            this.退出EToolStripMenuItem.Size = new System.Drawing.Size(137, 22);
+            this.退出EToolStripMenuItem.Size = new System.Drawing.Size(186, 22);
             this.退出EToolStripMenuItem.Text = "退出(&E)";
             this.退出EToolStripMenuItem.Click += new System.EventHandler(this.退出EToolStripMenuItem_Click);
             // 
@@ -289,6 +283,12 @@ namespace GW.TTLtoolsBox.WinFormUi
             this.tssl_TTL连接状态显示.Size = new System.Drawing.Size(76, 17);
             this.tssl_TTL连接状态显示.Text = "TTL连接状态";
             // 
+            // 最近打开的项目HToolStripMenuItem
+            // 
+            this.最近打开的项目HToolStripMenuItem.Name = "最近打开的项目HToolStripMenuItem";
+            this.最近打开的项目HToolStripMenuItem.Size = new System.Drawing.Size(186, 22);
+            this.最近打开的项目HToolStripMenuItem.Text = "最近打开的项目(&H)...";
+            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
@@ -307,17 +307,10 @@ namespace GW.TTLtoolsBox.WinFormUi
             this.ms_主菜单.PerformLayout();
             this.pan_主框架.ResumeLayout(false);
             this.tc_工具箱.ResumeLayout(false);
-            this.tp_TTL方案.ResumeLayout(false);
             this.tp_角色映射.ResumeLayout(false);
-            this.pan_角色映射.ResumeLayout(false);
-            this.tp_文本拆分.ResumeLayout(false);
-            this.tp_多音字替换.ResumeLayout(false);
             this.tp_角色和情绪指定.ResumeLayout(false);
-            this.pan_角色和情绪指定.ResumeLayout(false);
             this.tp_语音生成预处理.ResumeLayout(false);
-            this.pan_语音生成预处理.ResumeLayout(false);
             this.tp_语音生成.ResumeLayout(false);
-            this.pan_语音生成.ResumeLayout(false);
             this.ss_主状态栏.ResumeLayout(false);
             this.ss_主状态栏.PerformLayout();
             this.ResumeLayout(false);
@@ -351,5 +344,6 @@ namespace GW.TTLtoolsBox.WinFormUi
         internal System.Windows.Forms.Panel pan_语音生成;
         internal System.Windows.Forms.StatusStrip ss_主状态栏;
         internal System.Windows.Forms.ToolStripStatusLabel tssl_TTL连接状态显示;
+        private System.Windows.Forms.ToolStripMenuItem 最近打开的项目HToolStripMenuItem;
     }
 }

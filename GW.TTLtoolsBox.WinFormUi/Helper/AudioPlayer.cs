@@ -64,6 +64,10 @@ namespace GW.TTLtoolsBox.WinFormUi.Helper
                         _mediaPlayer.Play();
                     }
                 };
+                _mediaPlayer.MediaEnded += (s, e) =>
+                {
+                    Stop();
+                };
                 _mediaPlayer.Open(new Uri(filePath));
             }
             catch

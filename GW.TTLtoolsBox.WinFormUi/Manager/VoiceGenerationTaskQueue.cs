@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using GW.TTLtoolsBox.Core.SystemOption.TtlEngine;
+using GW.TTLtoolsBox.Core.TtlEngine;
 
 namespace GW.TTLtoolsBox.WinFormUi.Manager
 {
@@ -31,6 +31,15 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
     /// </remarks>
     public class VoiceGenerationTaskQueue : IDisposable
     {
+        #region 常量
+
+        /// <summary>
+        /// 语音生成临时文件前缀。
+        /// </summary>
+        private const string _临时文件_前缀_语音生成 = "temp_";
+
+        #endregion
+
         #region public
 
         #region 构造函数
@@ -46,12 +55,12 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
             Func<ITtlEngineConnector> getEngineConnector,
             Func<TtlEngineConnectionStatus> getConnectionStatus,
             string ffmpegPath,
-            string tempFolder = null)
+            string tempFolder)
         {
             _getEngineConnector = getEngineConnector;
             _getConnectionStatus = getConnectionStatus;
             _ffmpegPath = ffmpegPath;
-            _tempFolder = tempFolder ?? Path.Combine(System.Windows.Forms.Application.StartupPath, "Temp");
+            TempFolder = tempFolder;
         }
 
         #endregion
@@ -78,6 +87,24 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
         /// </summary>
         public int QueuedCount => _tasks.Count(t => t.Status == VoiceGenerationTaskStatus.排队中);
 
+        /// <summary>
+        /// 获取或设置是否保留原始语音临时文件的委托。
+        /// </summary>
+        public Func<bool> GetKeepTempFiles { get; set; }
+
+        /// <summary>
+        /// 获取或设置临时文件夹路径。
+        /// </summary>
+        public string TempFolder
+        {
+            get => _tempFolder;
+            set
+            {
+                if (string.IsNullOrWhiteSpace(value) == true) throw new ArgumentNullException(nameof(TempFolder));
+                _tempFolder = value;
+            }
+        }
+
         #endregion
 
         #region 方法
@@ -89,8 +116,20 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
         public void AddTask(VoiceGenerationTask task)
         {
             if (task == null) return;
+            task.PropertyChanged += OnTaskPropertyChanged;
             _tasks.Add(task);
             OnTaskListChanged(TaskListChangeType.Added, task);
+        }
+
+        /// <summary>
+        /// 任务属性变更处理。
+        /// </summary>
+        private void OnTaskPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (sender is VoiceGenerationTask task)
+            {
+                OnTaskProgressUpdated(task, task.Progress, task.ProgressDetail);
+            }
         }
 
         /// <summary>
@@ -113,7 +152,18 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
         /// <returns>是否成功移除。</returns>
         public bool RemoveTask(VoiceGenerationTask task)
         {
-            if (task == null || task.Status == VoiceGenerationTaskStatus.正在生成) return false;
+            if (task == null) return false;
+
+            bool isCurrentTask = (_currentTask == task);
+            
+            if (isCurrentTask && task.Status == VoiceGenerationTaskStatus.正在生成)
+            {
+                _shouldStop = true;
+                _currentTaskDeleted = true;
+            }
+            
+            task.PropertyChanged -= OnTaskPropertyChanged;
+            
             bool removed = _tasks.Remove(task);
             if (removed)
             {
@@ -127,6 +177,10 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
         /// </summary>
         public void ClearTasks()
         {
+            foreach (var task in _tasks)
+            {
+                task.PropertyChanged -= OnTaskPropertyChanged;
+            }
             _tasks.Clear();
             OnTaskListChanged(TaskListChangeType.Cleared, null);
         }
@@ -211,6 +265,9 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
         {
             if (_getEngineConnector?.Invoke() == null) return;
 
+            var connectionStatus = _getConnectionStatus?.Invoke() ?? TtlEngineConnectionStatus.未连接;
+            if (connectionStatus != TtlEngineConnectionStatus.连接成功) return;
+
             bool hasQueuedTask = _tasks.Any(t => t.Status == VoiceGenerationTaskStatus.排队中);
             lock (_lock)
             {
@@ -271,7 +328,7 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
         /// <summary>
         /// 处理下一个任务。
         /// </summary>
-        protected virtual async void ProcessNextTask()
+        protected virtual async Task ProcessNextTaskAsync()
         {
             lock (_lock)
             {
@@ -284,6 +341,7 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
                 _shouldStop = false;
 
                 var engineConnector = _getEngineConnector?.Invoke();
+                string engineId = engineConnector?.Id ?? string.Empty;
                 if (engineConnector == null)
                 {
                     lock (_lock)
@@ -315,9 +373,10 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
                 }
 
                 var connectionStatus = _getConnectionStatus?.Invoke() ?? TtlEngineConnectionStatus.未连接;
-                if (connectionStatus == TtlEngineConnectionStatus.未连接 ||
-                    connectionStatus == TtlEngineConnectionStatus.连接失败)
+                if (connectionStatus != TtlEngineConnectionStatus.连接成功)
                 {
+                    nextTask.ProgressDetail = "等待TTL引擎连接...";
+                    OnTaskProgressUpdated(nextTask, nextTask.Progress, nextTask.ProgressDetail);
                     lock (_lock)
                     {
                         _isRunning = false;
@@ -345,14 +404,20 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
         }
 
         /// <summary>
+        /// 处理下一个任务（异步包装器，用于事件处理和委托调用）。
+        /// </summary>
+        protected virtual void ProcessNextTask()
+        {
+            _ = ProcessNextTaskAsync();
+        }
+
+        /// <summary>
         /// 执行单个任务。
         /// </summary>
         /// <param name="task">要执行的任务。</param>
         protected virtual async Task ExecuteTaskAsync(VoiceGenerationTask task)
         {
             List<string> tempFilesToCleanup = new List<string>();
-            string mergedFile = null;
-            string speedAdjustedFile = null;
             bool success = false;
             bool engineConnectionLost = false;
 
@@ -361,11 +426,13 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
                 if (_shouldStop) return;
 
                 var engineConnector = _getEngineConnector?.Invoke();
+                string engineId = engineConnector?.Id ?? string.Empty;
                 var connectionStatus = _getConnectionStatus?.Invoke() ?? TtlEngineConnectionStatus.未连接;
 
                 if (engineConnector == null ||
                     connectionStatus == TtlEngineConnectionStatus.未连接 ||
-                    connectionStatus == TtlEngineConnectionStatus.连接失败)
+                    connectionStatus == TtlEngineConnectionStatus.连接失败 ||
+                    connectionStatus == TtlEngineConnectionStatus.连接中)
                 {
                     task.Status = VoiceGenerationTaskStatus.排队中;
                     task.ProgressDetail = "等待TTL引擎连接...";
@@ -390,7 +457,7 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
                         !Path.IsPathRooted(taskItem.TempFile) ||
                         !taskItem.TempFile.StartsWith(_tempFolder, StringComparison.OrdinalIgnoreCase))
                     {
-                        taskItem.TempFile = Path.Combine(_tempFolder, $"temp_{task.Id}_{i + 1}.wav");
+                        taskItem.SetTempFile(_tempFolder, task.Id, (uint)(i + 1));
                     }
 
                     if (File.Exists(taskItem.TempFile))
@@ -398,23 +465,11 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
                         completedItems++;
                     }
                 }
-
                 task.Progress = (decimal)completedItems / totalItems;
 
                 for (int i = 0; i < totalItems; i++)
                 {
                     if (_shouldStop) return;
-
-                    connectionStatus = _getConnectionStatus?.Invoke() ?? TtlEngineConnectionStatus.未连接;
-                    if (connectionStatus == TtlEngineConnectionStatus.未连接 ||
-                        connectionStatus == TtlEngineConnectionStatus.连接失败)
-                    {
-                        task.Status = VoiceGenerationTaskStatus.排队中;
-                        task.ProgressDetail = "等待TTL引擎连接...";
-                        engineConnectionLost = true;
-                        RequestEngineConnection?.Invoke(this, EventArgs.Empty);
-                        return;
-                    }
 
                     VoiceGenerationTaskItem taskItem = task.Items[i];
 
@@ -446,7 +501,7 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
                             if (sendTask == null)
                             {
                                 string textPreview = taskItem.Text.Length > 10 ? taskItem.Text.Substring(0, 10) + "……" : taskItem.Text;
-                                OnTaskSubmitInfo(task.Id, i + 1, textPreview);
+                                OnTaskSubmitInfo(task.Id, engineId, i + 1, textPreview);
                                 sendTask = engineConnector.SendTextAsync(taskItem.Text, parameters);
                             }
 
@@ -473,16 +528,6 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
                         catch
                         {
                             sendTask = null;
-                            connectionStatus = _getConnectionStatus?.Invoke() ?? TtlEngineConnectionStatus.未连接;
-                            if (connectionStatus == TtlEngineConnectionStatus.未连接 ||
-                                connectionStatus == TtlEngineConnectionStatus.连接失败)
-                            {
-                                task.Status = VoiceGenerationTaskStatus.排队中;
-                                task.ProgressDetail = "等待TTL引擎连接...";
-                                engineConnectionLost = true;
-                                RequestEngineConnection?.Invoke(this, EventArgs.Empty);
-                                return;
-                            }
                         }
                     }
 
@@ -491,51 +536,131 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
 
                 if (_shouldStop) return;
 
-                task.ProgressDetail = "正在合并音频...";
-                OnTaskProgressUpdated(task, task.Progress, task.ProgressDetail);
-
-                mergedFile = await MergeAudioFilesAsync(task.Items, task.SpaceTime, task.SaveFile);
-                tempFilesToCleanup.Add(mergedFile);
-
-                if (_shouldStop) return;
-
-                task.ProgressDetail = "正在调整音频速度...";
-                OnTaskProgressUpdated(task, task.Progress, task.ProgressDetail);
-
-                speedAdjustedFile = await AdjustAudioSpeedAsync(mergedFile, task.Speed);
-                if (speedAdjustedFile != mergedFile)
+                // 后期处理
+                string finishedFile = null;
                 {
-                    tempFilesToCleanup.Add(speedAdjustedFile);
+                    // 复制浅表克隆体
+                    var cloneItemArray = task.Items.Select(i => i.Clone()).ToArray();
+
+                    // 处理每个文件的速度
+                    {
+                        if (task.Speed == 0)
+                        {
+                            task.ProgressDetail = "正在调整各段音频速度...";
+                            OnTaskProgressUpdated(task, task.Progress, task.ProgressDetail);
+
+                            var adjustedSpeedFiles = await AdjustItemsAudioSpeedAsync(cloneItemArray);
+                            for (int i = 0; i < adjustedSpeedFiles.Length; i++)
+                            {
+                                var adjustedFile = adjustedSpeedFiles[i];
+                                if (adjustedFile != null)
+                                {
+                                    cloneItemArray[i].SetTempFile(adjustedFile);
+                                    tempFilesToCleanup.Add(adjustedFile);
+                                }
+                            }
+
+                            if (_shouldStop) return;
+                        }
+                    }
+
+                    // 处理每个文件的音量
+                    {
+                        if (task.Volume == 0)
+                        {
+                            task.ProgressDetail = "正在调整各段音频音量...";
+                            OnTaskProgressUpdated(task, task.Progress, task.ProgressDetail);
+
+                            var adjustedVolumeFiles = await AdjustItemsAudioVolumeAsync(cloneItemArray);
+                            for (int i = 0; i < adjustedVolumeFiles.Length; i++)
+                            {
+                                var adjustedFile = adjustedVolumeFiles[i];
+                                if (adjustedFile != null)
+                                {
+                                    cloneItemArray[i].SetTempFile(adjustedFile);
+                                    tempFilesToCleanup.Add(adjustedFile);
+                                }
+                            }
+
+                            if (_shouldStop) return;
+                        }
+                    }
+
+                    // 合并音频
+                    {
+                        task.ProgressDetail = "正在合并音频...";
+                        OnTaskProgressUpdated(task, task.Progress, task.ProgressDetail);
+
+                        var mergedFile = await MergeAudioFilesAsync(cloneItemArray, task.SpaceTime, task.SaveFile);
+                        tempFilesToCleanup.Add(mergedFile);
+                        finishedFile = mergedFile;
+
+                        if (_shouldStop) return;
+                    }
+
+                    // 处理总体速度
+                    {
+                        if (task.Speed > 0)
+                        {
+                            task.ProgressDetail = "正在调整音频速度...";
+                            OnTaskProgressUpdated(task, task.Progress, task.ProgressDetail);
+
+                            finishedFile = await AdjustAudioSpeedAsync(finishedFile, task.Speed);
+                            tempFilesToCleanup.Add(finishedFile);
+
+                            if (_shouldStop) return;
+                        }
+                    }
+
+                    // 处理总体音量
+                    {
+                        if (task.Volume > 0)
+                        {
+                            task.ProgressDetail = "正在调整音频音量...";
+                            OnTaskProgressUpdated(task, task.Progress, task.ProgressDetail);
+
+                            finishedFile = await AdjustAudioVolumeAsync(finishedFile, task.Volume);
+                            tempFilesToCleanup.Add(finishedFile);
+
+                            if (_shouldStop) return;
+                        }
+                    }
+
+                    if (_shouldStop) return;
                 }
 
-                if (_shouldStop) return;
-
-                string outputDir = Path.GetDirectoryName(task.SaveFile);
-                if (!Directory.Exists(outputDir))
+                // 保存最终文件
                 {
-                    Directory.CreateDirectory(outputDir);
+                    string outputDir = Path.GetDirectoryName(task.SaveFile);
+                    if (!Directory.Exists(outputDir))
+                    {
+                        Directory.CreateDirectory(outputDir);
+                    }
+
+                    task.ProgressDetail = "正在保存最终文件...";
+                    OnTaskProgressUpdated(task, task.Progress, task.ProgressDetail);
+
+                    string fileExtension = Path.GetExtension(task.SaveFile).ToLowerInvariant();
+
+                    if (fileExtension == ".mp3")
+                    {
+                        string mp3TempFile = await ConvertToMp3Async(finishedFile, task.SaveFile);
+                        tempFilesToCleanup.Add(mp3TempFile);
+                    }
+                    else
+                    {
+                        File.Copy(finishedFile, task.SaveFile, true);
+                    }
                 }
 
-                task.ProgressDetail = "正在保存最终文件...";
-                OnTaskProgressUpdated(task, task.Progress, task.ProgressDetail);
-
-                string fileExtension = Path.GetExtension(task.SaveFile).ToLowerInvariant();
-
-                if (fileExtension == ".mp3")
+                // 完成任务
                 {
-                    string mp3TempFile = await ConvertToMp3Async(speedAdjustedFile, task.SaveFile);
-                    tempFilesToCleanup.Add(mp3TempFile);
-                }
-                else
-                {
-                    File.Copy(speedAdjustedFile, task.SaveFile, true);
-                }
+                    success = true;
 
-                success = true;
-
-                task.Status = VoiceGenerationTaskStatus.已完成;
-                task.Progress = 1;
-                task.ProgressDetail = "生成完成";
+                    task.Status = VoiceGenerationTaskStatus.已完成;
+                    task.Progress = 1;
+                    task.ProgressDetail = "生成完成";
+                }
             }
             catch (Exception ex)
             {
@@ -559,36 +684,24 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
             }
             finally
             {
-                if (success)
+                if (_currentTaskDeleted)
                 {
-                    foreach (var item in task.Items)
-                    {
-                        if (!string.IsNullOrWhiteSpace(item.TempFile) && File.Exists(item.TempFile))
-                        {
-                            try { File.Delete(item.TempFile); } catch { }
-                        }
-                    }
-
-                    foreach (string tempFile in tempFilesToCleanup)
-                    {
-                        try
-                        {
-                            if (File.Exists(tempFile))
-                            {
-                                File.Delete(tempFile);
-                            }
-                        }
-                        catch { }
-                    }
+                    cleanupTempFiles(task, tempFilesToCleanup, false, true);
+                    _currentTaskDeleted = false;
+                }
+                else if (success)
+                {
+                    bool keepTempFiles = GetKeepTempFiles?.Invoke() ?? false;
+                    cleanupTempFiles(task, tempFilesToCleanup, keepTempFiles, false);
 
                     if (task.IsPreview && !string.IsNullOrWhiteSpace(task.PreviewSourceName))
                     {
-                        OnPreviewTaskCompleted(task.PreviewSourceName, true);
+                        OnPreviewTaskCompleted(task.PreviewSourceName, true, task.Speed, task.Volume);
                     }
                 }
                 else if (task.IsPreview && !string.IsNullOrWhiteSpace(task.PreviewSourceName))
                 {
-                    OnPreviewTaskCompleted(task.PreviewSourceName, false);
+                    OnPreviewTaskCompleted(task.PreviewSourceName, false, task.Speed, task.Volume);
                 }
 
                 if (!success && task.Status == VoiceGenerationTaskStatus.正在生成)
@@ -598,9 +711,22 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
                 }
 
                 _currentTask = null;
+
+                bool wasDeleted = _currentTaskDeleted;
+                _currentTaskDeleted = false;
+
                 OnTaskStatusChanged(task);
 
-                if (!engineConnectionLost)
+                if (wasDeleted)
+                {
+                    lock (_lock)
+                    {
+                        _isRunning = false;
+                        _shouldStop = false;
+                        ProcessNextTask();
+                    }
+                }
+                else if (!engineConnectionLost)
                 {
                     lock (_lock)
                     {
@@ -632,6 +758,14 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
         protected virtual async Task<string> AdjustAudioSpeedAsync(string inputFile, int speed)
         {
             return await Task.Run(() => AdjustAudioSpeed(inputFile, speed));
+        }
+
+        /// <summary>
+        /// 调整音频音量。
+        /// </summary>
+        protected virtual async Task<string> AdjustAudioVolumeAsync(string inputFile, int volume)
+        {
+            return await Task.Run(() => AdjustAudioVolume(inputFile, volume));
         }
 
         /// <summary>
@@ -669,17 +803,17 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
         /// <summary>
         /// 触发任务提交信息事件。
         /// </summary>
-        protected virtual void OnTaskSubmitInfo(string taskId, int itemIndex, string textPreview)
+        protected virtual void OnTaskSubmitInfo(string taskId, string engineId, int itemIndex, string textPreview)
         {
-            TaskSubmitInfo?.Invoke(this, new TaskSubmitInfoEventArgs(taskId, itemIndex, textPreview));
+            TaskSubmitInfo?.Invoke(this, new TaskSubmitInfoEventArgs(taskId, engineId, itemIndex, textPreview));
         }
 
         /// <summary>
         /// 触发预览任务完成事件。
         /// </summary>
-        protected virtual void OnPreviewTaskCompleted(string sourceName, bool success)
+        protected virtual void OnPreviewTaskCompleted(string sourceName, bool success, int speed = 100, int volume = 100)
         {
-            PreviewTaskCompleted?.Invoke(this, new PreviewTaskCompletedEventArgs(sourceName, success));
+            PreviewTaskCompleted?.Invoke(this, new PreviewTaskCompletedEventArgs(sourceName, success, speed, volume));
         }
 
         #endregion
@@ -688,17 +822,63 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
 
         #region private
 
+        /// <summary>
+        /// 清理任务的临时文件。
+        /// </summary>
+        /// <param name="task">任务。</param>
+        /// <param name="tempFilesToCleanup">需要清理的其他临时文件列表。</param>
+        /// <param name="keepTempFiles">是否保留{_临时文件_前缀_语音生成}开头的临时文件。</param>
+        /// <param name="deleteAll">是否删除所有文件（任务删除时使用）。</param>
+        private void cleanupTempFiles(VoiceGenerationTask task, List<string> tempFilesToCleanup, bool keepTempFiles, bool deleteAll)
+        {
+            HashSet<string> filesToDelete = new HashSet<string>();
+
+            // 收集要删除的任务项临时文件
+            foreach (var item in task.Items)
+            {
+                string tempFile = item.TempFile;
+                if (!string.IsNullOrWhiteSpace(tempFile) && File.Exists(tempFile))
+                {
+                    filesToDelete.Add(tempFile);
+                }
+            }
+
+            // 收集要删除的其他临时文件
+            foreach (string tempFile in tempFilesToCleanup)
+            {
+                if (!string.IsNullOrWhiteSpace(tempFile) && File.Exists(tempFile))
+                {
+                    filesToDelete.Add(tempFile);
+                }
+            }
+
+            // 删除
+            foreach (string file in filesToDelete)
+            {
+                string fileName = Path.GetFileName(file);
+                bool isTempFile = fileName.StartsWith(_临时文件_前缀_语音生成, StringComparison.OrdinalIgnoreCase);
+
+                bool shouldDelete = deleteAll || !(keepTempFiles && isTempFile);
+
+                if (shouldDelete)
+                {
+                    try { File.Delete(file); } catch { }
+                }
+            }
+        }
+
         #region 字段
 
         private readonly BindingList<VoiceGenerationTask> _tasks = new BindingList<VoiceGenerationTask> { RaiseListChangedEvents = true };
         private readonly object _lock = new object();
         private readonly Func<ITtlEngineConnector> _getEngineConnector;
         private readonly Func<TtlEngineConnectionStatus> _getConnectionStatus;
-        private readonly string _tempFolder;
+        private string _tempFolder;
         private readonly string _ffmpegPath;
         private bool _isRunning = false;
         private bool _shouldStop = false;
         private VoiceGenerationTask _currentTask = null;
+        private bool _currentTaskDeleted = false;
 
         #endregion
 
@@ -738,7 +918,7 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
                     {
                         string inputFileName = Path.GetFileName(validFiles[0]);
                         string outputFileName = Path.GetFileName(tempOutput);
-                        string ffmpegArgs = $"-i \"{inputFileName}\" -af \"apad=pad_dur={silenceDuration}\" -y \"{outputFileName}\"";
+                        string ffmpegArgs = $"-i \"{inputFileName}\" -af \"apad=pad_dur={silenceDuration:F1}\" -y \"{outputFileName}\"";
                         RunFFmpegCommand(ffmpegArgs, _tempFolder).Wait();
                     }
                     else
@@ -799,7 +979,7 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
                 string inputFileName = Path.GetFileName(inputFile);
                 string outputFileName = $"speed_{Guid.NewGuid()}.wav";
                 string outputFile = Path.Combine(_tempFolder, outputFileName);
-                string ffmpegArgs = $"-i \"{inputFileName}\" -filter:a \"atempo={tempo}\" -y \"{outputFileName}\"";
+                string ffmpegArgs = $"-i \"{inputFileName}\" -filter:a \"atempo={tempo:F1}\" -y \"{outputFileName}\"";
 
                 RunFFmpegCommand(ffmpegArgs, _tempFolder).Wait();
 
@@ -811,10 +991,131 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
             }
         }
 
+        /// <summary>
+        /// 调整音频音量。
+        /// </summary>
+        /// <param name="inputFile">输入文件路径。</param>
+        /// <param name="volume">音量百分比。</param>
+        /// <returns>调整后的文件路径。</returns>
+        private string AdjustAudioVolume(string inputFile, int volume)
+        {
+            try
+            {
+                if (volume == 100)
+                {
+                    return inputFile;
+                }
+
+                float volumeFactor = volume / 100f;
+                string inputFileName = Path.GetFileName(inputFile);
+                string outputFileName = $"volume_{Guid.NewGuid()}.wav";
+                string outputFile = Path.Combine(_tempFolder, outputFileName);
+                string ffmpegArgs = $"-i \"{inputFileName}\" -filter:a \"volume={volumeFactor:F2}\" -y \"{outputFileName}\"";
+
+                RunFFmpegCommand(ffmpegArgs, _tempFolder).Wait();
+
+                return outputFile;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"调整音频音量失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 调整多个任务项音频的语速。
+        /// </summary>
+        /// <param name="taskItems">任务项数组。</param>
+        /// <returns>调整后的临时文件路径列表。</returns>
+        private async Task<string[]> AdjustItemsAudioSpeedAsync(VoiceGenerationTaskItem[] taskItems)
+        {
+            return await Task.Run(() =>
+            {
+                List<string> adjustedFiles = new List<string>();
+
+                for (int i = 0; i < taskItems.Length; i++)
+                {
+                    VoiceGenerationTaskItem item = taskItems[i];
+
+                    if (string.IsNullOrWhiteSpace(item.TempFile) || !File.Exists(item.TempFile))
+                    {
+                        adjustedFiles.Add(null);
+                        continue;
+                    }
+
+                    int itemSpeed = item.Speed > 0 ? item.Speed : 100;
+
+                    if (itemSpeed == 100)
+                    {
+                        adjustedFiles.Add(null);
+                        continue;
+                    }
+
+                    string adjustedFile = Path.Combine(_tempFolder, $"speed_item_{Guid.NewGuid()}.wav");
+                    float tempo = itemSpeed / 100f;
+                    string inputFileName = Path.GetFileName(item.TempFile);
+                    string outputFileName = Path.GetFileName(adjustedFile);
+                    string ffmpegArgs = $"-i \"{inputFileName}\" -filter:a \"atempo={tempo:F2}\" -y \"{outputFileName}\"";
+
+                    RunFFmpegCommand(ffmpegArgs, _tempFolder).Wait();
+
+                    item.SetTempFile(adjustedFile);
+                    adjustedFiles.Add(adjustedFile);
+                }
+
+                return adjustedFiles.ToArray();
+            });
+        }
+
+        /// <summary>
+        /// 调整多个任务项音频的音量。
+        /// </summary>
+        /// <param name="taskItems">任务项数组。</param>
+        /// <returns>调整后的临时文件路径列表。</returns>
+        private async Task<string[]> AdjustItemsAudioVolumeAsync(VoiceGenerationTaskItem[] taskItems)
+        {
+            return await Task.Run(() =>
+            {
+                List<string> adjustedFiles = new List<string>();
+
+                for (int i = 0; i < taskItems.Length; i++)
+                {
+                    VoiceGenerationTaskItem item = taskItems[i];
+
+                    if (string.IsNullOrWhiteSpace(item.TempFile) || !File.Exists(item.TempFile))
+                    {
+                        adjustedFiles.Add(null);
+                        continue;
+                    }
+
+                    int itemVolume = item.Volume > 0 ? item.Volume : 100;
+
+                    if (itemVolume == 100)
+                    {
+                        adjustedFiles.Add(null);
+                        continue;
+                    }
+
+                    string adjustedFile = Path.Combine(_tempFolder, $"volume_item_{Guid.NewGuid()}.wav");
+                    float volumeFactor = itemVolume / 100f;
+                    string inputFileName = Path.GetFileName(item.TempFile);
+                    string outputFileName = Path.GetFileName(adjustedFile);
+                    string ffmpegArgs = $"-i \"{inputFileName}\" -filter:a \"volume={volumeFactor:F2}\" -y \"{outputFileName}\"";
+
+                    RunFFmpegCommand(ffmpegArgs, _tempFolder).Wait();
+
+                    item.SetTempFile(adjustedFile);
+                    adjustedFiles.Add(adjustedFile);
+                }
+
+                return adjustedFiles.ToArray();
+            });
+        }
+
         private string ConvertToMp3(string inputFile, string outputFile)
         {
             string inputFileName = Path.GetFileName(inputFile);
-            string outputFileName = $"temp_mp3_{Guid.NewGuid()}.mp3";
+            string outputFileName = $"mp3_{Guid.NewGuid()}.mp3";
             string tempOutputFile = Path.Combine(_tempFolder, outputFileName);
             string ffmpegArgs = $"-i \"{inputFileName}\" -q:a 2 -acodec libmp3lame \"{outputFileName}\"";
 
@@ -1017,6 +1318,11 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
         public string TaskId { get; }
 
         /// <summary>
+        /// 获取TTL引擎ID。
+        /// </summary>
+        public string EngineId { get; }
+
+        /// <summary>
         /// 获取任务项索引。
         /// </summary>
         public int ItemIndex { get; }
@@ -1029,9 +1335,10 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
         /// <summary>
         /// 初始化TaskSubmitInfoEventArgs类的新实例。
         /// </summary>
-        public TaskSubmitInfoEventArgs(string taskId, int itemIndex, string textPreview)
+        public TaskSubmitInfoEventArgs(string taskId, string engineId, int itemIndex, string textPreview)
         {
             TaskId = taskId;
+            EngineId = engineId;
             ItemIndex = itemIndex;
             TextPreview = textPreview;
         }
@@ -1053,12 +1360,24 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
         public bool Success { get; }
 
         /// <summary>
+        /// 获取语速值。
+        /// </summary>
+        public int Speed { get; }
+
+        /// <summary>
+        /// 获取音量值。
+        /// </summary>
+        public int Volume { get; }
+
+        /// <summary>
         /// 初始化PreviewTaskCompletedEventArgs类的新实例。
         /// </summary>
-        public PreviewTaskCompletedEventArgs(string sourceName, bool success)
+        public PreviewTaskCompletedEventArgs(string sourceName, bool success, int speed = 100, int volume = 100)
         {
             SourceName = sourceName;
             Success = success;
+            Speed = speed;
+            Volume = volume;
         }
     }
 

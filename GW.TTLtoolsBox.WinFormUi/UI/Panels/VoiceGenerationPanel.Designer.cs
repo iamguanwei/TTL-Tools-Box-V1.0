@@ -58,6 +58,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.删除RToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem3 = new System.Windows.Forms.ToolStripSeparator();
             this.清空所有任务AToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.cb_语音生成_保留临时文件 = new System.Windows.Forms.CheckBox();
             this.pan_语音生成.SuspendLayout();
             this.pan_语音生成_工作状态.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgv_语音生成_任务清单)).BeginInit();
@@ -66,6 +67,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             // 
             // pan_语音生成
             // 
+            this.pan_语音生成.Controls.Add(this.cb_语音生成_保留临时文件);
             this.pan_语音生成.Controls.Add(this.bt_语音生成_打开角色声音预览目录);
             this.pan_语音生成.Controls.Add(this.pan_语音生成_工作状态);
             this.pan_语音生成.Controls.Add(this.bt_语音生成_设置临时目录);
@@ -331,6 +333,18 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.清空所有任务AToolStripMenuItem.Text = "清空所有任务(&A)...";
             this.清空所有任务AToolStripMenuItem.Click += new System.EventHandler(this.清空所有任务AToolStripMenuItem_Click);
             // 
+            // cb_语音生成_保留临时文件
+            // 
+            this.cb_语音生成_保留临时文件.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.cb_语音生成_保留临时文件.AutoSize = true;
+            this.cb_语音生成_保留临时文件.Location = new System.Drawing.Point(827, 12);
+            this.cb_语音生成_保留临时文件.Name = "cb_语音生成_保留临时文件";
+            this.cb_语音生成_保留临时文件.Size = new System.Drawing.Size(96, 16);
+            this.cb_语音生成_保留临时文件.TabIndex = 22;
+            this.cb_语音生成_保留临时文件.Text = "保留临时文件";
+            this.cb_语音生成_保留临时文件.UseVisualStyleBackColor = true;
+            this.cb_语音生成_保留临时文件.CheckedChanged += new System.EventHandler(this.cb_语音生成_保留临时文件_CheckedChanged);
+            // 
             // VoiceGenerationPanel
             // 
             this.Controls.Add(this.pan_语音生成);
@@ -486,5 +500,6 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// 清空所有任务菜单项。
         /// </summary>
         internal System.Windows.Forms.ToolStripMenuItem 清空所有任务AToolStripMenuItem;
+        private System.Windows.Forms.CheckBox cb_语音生成_保留临时文件;
     }
 }
