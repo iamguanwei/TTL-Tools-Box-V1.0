@@ -177,6 +177,11 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
         /// </summary>
         public string PreviewSourceName { get; set; } = string.Empty;
 
+        /// <summary>
+        /// 获取或设置MP3输出文件路径。
+        /// </summary>
+        public string Mp3OutputFile { get; set; } = string.Empty;
+
         #endregion
 
         #endregion

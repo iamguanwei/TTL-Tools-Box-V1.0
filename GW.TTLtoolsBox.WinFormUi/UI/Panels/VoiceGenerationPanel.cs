@@ -28,7 +28,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
     /// - 支持任务的启动、停止、重启操作
     /// - 支持任务的上下移动和删除
     /// - 支持音频预览和文件夹操作
-    /// - 支持任务数据的保存和加载
+    /// - 支持任务数据的保存和加载（保存到系统配置）
     /// 
     /// 使用场景：
     /// - 在TTL工具箱中进行批量语音生成
@@ -37,7 +37,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
     /// 依赖关系：
     /// - 依赖TtlSchemeController获取当前引擎信息
     /// - 依赖VoiceGenerationTaskQueue管理任务队列
-    /// - 依赖ProjectFile保存/加载任务数据
+    /// - 依赖Setting保存/加载任务数据
     /// - 通过事件与MainForm通信
     /// </remarks>
     public partial class VoiceGenerationPanel : ViewBase
@@ -110,11 +110,6 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// 获取或设置TTL方案控制器。
         /// </summary>
         public TtlSchemeController TtlSchemeController { get; set; }
-
-        /// <summary>
-        /// 获取或设置项目文件实例。
-        /// </summary>
-        public ProjectFile ProjectFile { get; set; }
 
         /// <summary>
         /// 获取或设置当前引擎ID。
@@ -298,6 +293,11 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         private VoiceGenerationTaskQueue _voiceGenerationTaskQueue;
 
         /// <summary>
+        /// MP3转换队列管理器。
+        /// </summary>
+        private Mp3ConversionQueue _mp3ConversionQueue;
+
+        /// <summary>
         /// 临时工作目录。
         /// </summary>
         private string _tempFolder = 临时_工作目录;
@@ -334,6 +334,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             _voiceGenerationTaskQueue.PreviewTaskCompleted += VoiceGenerationTaskQueue_PreviewTaskCompleted;
             _voiceGenerationTaskQueue.TaskSubmitInfo += VoiceGenerationTaskQueue_TaskSubmitInfo;
             _voiceGenerationTaskQueue.GetKeepTempFiles = () => cb_语音生成_保留临时文件.Checked;
+            _voiceGenerationTaskQueue.GetTempFolder = () => Setting.GetValue(nameof(临时_工作目录), 临时_工作目录);
 
             dgv_语音生成_任务清单.AutoGenerateColumns = false;
             dgv_语音生成_任务清单.AllowUserToAddRows = false;
@@ -345,7 +346,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             dgv_语音生成_任务清单.Columns.Add(new DataGridViewTextBoxColumn { Name = "Status", DataPropertyName = "Status", HeaderText = "任务状态", Width = 100, ReadOnly = true });
             dgv_语音生成_任务清单.Columns.Add(new DataGridViewTextBoxColumn { Name = "ShowProgress", DataPropertyName = "ShowProgress", HeaderText = "进度", Width = 80, ReadOnly = true });
             dgv_语音生成_任务清单.Columns.Add(new DataGridViewTextBoxColumn { Name = "ProgressDetail", DataPropertyName = "ProgressDetail", HeaderText = "进度详情", Width = 200, ReadOnly = true });
-            dgv_语音生成_任务清单.Columns.Add(new DataGridViewTextBoxColumn { Name = "FileName", DataPropertyName = "FileName", HeaderText = "保存位置", Width = 150, ReadOnly = true });
+            dgv_语音生成_任务清单.Columns.Add(new DataGridViewTextBoxColumn { Name = "FileName", DataPropertyName = "FileName", HeaderText = "保存位置", AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells, ReadOnly = true });
             dgv_语音生成_任务清单.Columns.Add(new DataGridViewTextBoxColumn { Name = "ShowSpeed", DataPropertyName = "ShowSpeed", HeaderText = "语速", Width = 80, ReadOnly = true });
             dgv_语音生成_任务清单.Columns.Add(new DataGridViewTextBoxColumn { Name = "ShowVolume", DataPropertyName = "ShowVolume", HeaderText = "音量", Width = 80, ReadOnly = true });
             dgv_语音生成_任务清单.Columns.Add(new DataGridViewTextBoxColumn { Name = "ShowSpaceTime", DataPropertyName = "ShowSpaceTime", HeaderText = "空白时长", Width = 80, ReadOnly = true });
@@ -377,6 +378,13 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
 
             // 绑定鼠标悬浮事件
             lab_语音生成_任务提交信息.MouseHover += lab_语音生成_任务提交信息_MouseHover;
+
+            // 初始化MP3转换队列
+            _mp3ConversionQueue = new Mp3ConversionQueue(FfmpegPath ?? Ffmpeg_文件, _tempFolder);
+            _mp3ConversionQueue.ConversionStarted += Mp3ConversionQueue_ConversionStarted;
+            _mp3ConversionQueue.ConversionCompleted += Mp3ConversionQueue_ConversionCompleted;
+            _mp3ConversionQueue.ConversionFailed += Mp3ConversionQueue_ConversionFailed;
+            _mp3ConversionQueue.ConversionCancelled += Mp3ConversionQueue_ConversionCancelled;
         }
 
         #endregion
@@ -407,7 +415,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 Invoke(new Action(() => VoiceGenerationTaskQueue_TaskListChanged(sender, e)));
                 return;
             }
-            OnProjectModified();
+            save语音生成任务清单Data();
         }
 
         /// <summary>
@@ -420,7 +428,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 Invoke(new Action(() => VoiceGenerationTaskQueue_TaskProgressUpdated(sender, e)));
                 return;
             }
-            OnProjectModified();
+            save语音生成任务清单Data();
             refresh语音生成任务清单DataGridView();
         }
 
@@ -472,6 +480,9 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             {
                 _recentSubmitInfos.RemoveAt(0);
             }
+
+            string toolTipText = string.Join(Environment.NewLine, _recentSubmitInfos);
+            _submitInfoToolTip.SetToolTip(lab_语音生成_任务提交信息, toolTipText);
         }
 
         /// <summary>
@@ -544,6 +555,15 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// </summary>
         private void cms_语音生成_任务控制_Opening(object sender, System.ComponentModel.CancelEventArgs e)
         {
+            Point mousePosition = dgv_语音生成_任务清单.PointToClient(Cursor.Position);
+            DataGridView.HitTestInfo hitTest = dgv_语音生成_任务清单.HitTest(mousePosition.X, mousePosition.Y);
+
+            if (hitTest.Type != DataGridViewHitTestType.Cell || hitTest.RowIndex < 0)
+            {
+                e.Cancel = true;
+                return;
+            }
+
             bool hasSelectedRows = dgv_语音生成_任务清单.SelectedRows.Count > 0;
             int totalRows = dgv_语音生成_任务清单.Rows.Count;
             int selectedCount = dgv_语音生成_任务清单.SelectedRows.Count;
@@ -560,6 +580,9 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             复制CToolStripMenuItem.Enabled = false;
             删除RToolStripMenuItem.Enabled = false;
             清空所有任务AToolStripMenuItem.Enabled = totalRows > 0;
+            清空已完成任务NToolStripMenuItem.Enabled = _voiceGenerationTaskQueue.Tasks.Any(t => t.Status == VoiceGenerationTaskStatus.已完成);
+            清理临时文件MToolStripMenuItem.Enabled = false;
+            转换为MP3PToolStripMenuItem.Enabled = false;
 
             if (hasSelectedRows)
             {
@@ -584,11 +607,14 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
 
                     bool allCanStart = selectedTasks.All(t => t.Status == VoiceGenerationTaskStatus.未开始);
                     bool allCanPause = selectedTasks.All(t => t.Status == VoiceGenerationTaskStatus.排队中 || t.Status == VoiceGenerationTaskStatus.正在生成);
-                    bool allCanRestart = selectedTasks.All(t => t.Status == VoiceGenerationTaskStatus.已完成 || t.Status == VoiceGenerationTaskStatus.生成失败);
+                    bool allCanRestart = selectedTasks.All(t => t.Status == VoiceGenerationTaskStatus.已完成 || t.Status == VoiceGenerationTaskStatus.生成失败 || t.Status == VoiceGenerationTaskStatus.转换MP3失败);
                     bool allCompleted = selectedTasks.All(t => t.Status == VoiceGenerationTaskStatus.已完成);
+                    bool anyConvertingMp3 = selectedTasks.Any(t => t.Status == VoiceGenerationTaskStatus.转换MP3);
+                    bool allConvertingMp3 = selectedTasks.All(t => t.Status == VoiceGenerationTaskStatus.转换MP3);
+                    bool allMp3ConversionFailed = selectedTasks.All(t => t.Status == VoiceGenerationTaskStatus.转换MP3失败);
 
                     启动SToolStripMenuItem.Enabled = allCanStart && !allCanRestart;
-                    停止TToolStripMenuItem.Enabled = allCanPause;
+                    停止TToolStripMenuItem.Enabled = allCanPause || allConvertingMp3;
                     重新启动SToolStripMenuItem.Enabled = allCanRestart;
 
                     if (allCompleted && isSingleSelection)
@@ -598,8 +624,23 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                         预览声音MToolStripMenuItem.Enabled = fileExists;
                     }
 
+                    if (allMp3ConversionFailed && isSingleSelection)
+                    {
+                        VoiceGenerationTask singleTask = selectedTasks[0];
+                        bool fileExists = !string.IsNullOrWhiteSpace(singleTask.SaveFile) && File.Exists(singleTask.SaveFile);
+                        预览声音MToolStripMenuItem.Enabled = fileExists;
+                    }
+
+                    清理临时文件MToolStripMenuItem.Enabled = allCompleted;
+
+                    bool allWavAndExist = selectedTasks.All(t =>
+                        !string.IsNullOrWhiteSpace(t.SaveFile) &&
+                        File.Exists(t.SaveFile) &&
+                        Path.GetExtension(t.SaveFile).Equals(".wav", StringComparison.OrdinalIgnoreCase));
+                    转换为MP3PToolStripMenuItem.Enabled = (allCompleted && allWavAndExist) || allMp3ConversionFailed;
+
                     bool hasPreviewTask = selectedTasks.Any(t => isPreviewVoiceTask(t));
-                    修改存储文件夹MToolStripMenuItem.Enabled = !hasPreviewTask;
+                    修改存储文件夹MToolStripMenuItem.Enabled = !hasPreviewTask && !anyConvertingMp3 && !allMp3ConversionFailed;
                 }
             }
         }
@@ -653,6 +694,24 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         }
 
         /// <summary>
+        /// 事件处理：点击"清空已完成任务"菜单项。
+        /// </summary>
+        private void 清空已完成任务NToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            DialogResult result = MessageBox.Show(
+                "确定要清空所有已完成的任务吗？",
+                "确认",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question,
+                MessageBoxDefaultButton.Button2);
+
+            if (result == DialogResult.Yes)
+            {
+                clearCompletedTasksAndCleanup();
+            }
+        }
+
+        /// <summary>
         /// 事件处理：点击"启动"菜单项。
         /// </summary>
         private void 启动SToolStripMenuItem_Click(object sender, EventArgs e)
@@ -671,7 +730,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 }
                 if (hasStarted)
                 {
-                    OnProjectModified();
+                    save语音生成任务清单Data();
                     refresh语音生成任务清单DataGridView();
                     _voiceGenerationTaskQueue.Start();
                 }
@@ -686,6 +745,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             if (dgv_语音生成_任务清单.SelectedRows.Count > 0)
             {
                 bool hasChanged = false;
+                bool hasMp3ConversionTask = false;
 
                 foreach (DataGridViewRow row in dgv_语音生成_任务清单.SelectedRows)
                 {
@@ -704,12 +764,21 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                             task.Status = VoiceGenerationTaskStatus.未开始;
                             hasChanged = true;
                         }
+                        else if (task.Status == VoiceGenerationTaskStatus.转换MP3)
+                        {
+                            hasMp3ConversionTask = true;
+                        }
                     }
                 }
 
-                if (hasChanged)
+                if (hasMp3ConversionTask)
                 {
-                    OnProjectModified();
+                    _mp3ConversionQueue.Stop();
+                }
+
+                if (hasChanged || hasMp3ConversionTask)
+                {
+                    save语音生成任务清单Data();
                     refresh语音生成任务清单DataGridView();
                 }
             }
@@ -723,6 +792,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             if (dgv_语音生成_任务清单.SelectedRows.Count > 0)
             {
                 List<VoiceGenerationTask> tasksToRestart = new List<VoiceGenerationTask>();
+                List<VoiceGenerationTask> mp3ConversionTasksToRestart = new List<VoiceGenerationTask>();
                 bool hasCurrentExecutingTask = false;
 
                 foreach (DataGridViewRow row in dgv_语音生成_任务清单.SelectedRows)
@@ -730,47 +800,74 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                     VoiceGenerationTask task = row.DataBoundItem as VoiceGenerationTask;
                     if (task != null)
                     {
-                        tasksToRestart.Add(task);
-                        if (_voiceGenerationTaskQueue.CurrentTask == task)
+                        if (task.Status == VoiceGenerationTaskStatus.转换MP3失败)
                         {
-                            hasCurrentExecutingTask = true;
+                            mp3ConversionTasksToRestart.Add(task);
                         }
-                    }
-                }
-
-                if (hasCurrentExecutingTask)
-                {
-                    _voiceGenerationTaskQueue.Stop();
-                    Task.Run(async () =>
-                    {
-                        int waitCount = 0;
-                        while (_voiceGenerationTaskQueue.IsRunning && waitCount < 50)
+                        else
                         {
-                            await Task.Delay(100);
-                            waitCount++;
-                        }
-
-                        this.Invoke(new Action(() =>
-                        {
-                            foreach (var task in tasksToRestart)
+                            tasksToRestart.Add(task);
+                            if (_voiceGenerationTaskQueue.CurrentTask == task)
                             {
-                                restartTaskWithVerification(task);
+                                hasCurrentExecutingTask = true;
                             }
-                            OnProjectModified();
-                            refresh语音生成任务清单DataGridView();
-                            _voiceGenerationTaskQueue.Start();
-                        }));
-                    });
-                }
-                else
-                {
-                    foreach (var task in tasksToRestart)
-                    {
-                        restartTaskWithVerification(task);
+                        }
                     }
-                    OnProjectModified();
-                    refresh语音生成任务清单DataGridView();
-                    _voiceGenerationTaskQueue.Start();
+                }
+
+                if (mp3ConversionTasksToRestart.Count > 0)
+                {
+                    foreach (var task in mp3ConversionTasksToRestart)
+                    {
+                        string mp3File = task.Mp3OutputFile;
+                        if (string.IsNullOrWhiteSpace(mp3File))
+                        {
+                            string wavFile = task.SaveFile;
+                            string folder = Path.GetDirectoryName(wavFile);
+                            string fileNameWithoutExt = Path.GetFileNameWithoutExtension(wavFile);
+                            mp3File = Path.Combine(folder, $"{fileNameWithoutExt}.mp3");
+                        }
+                        _mp3ConversionQueue.AddConversionTask(task, mp3File);
+                    }
+                    _mp3ConversionQueue.Start();
+                }
+
+                if (tasksToRestart.Count > 0)
+                {
+                    if (hasCurrentExecutingTask)
+                    {
+                        _voiceGenerationTaskQueue.Stop();
+                        Task.Run(async () =>
+                        {
+                            int waitCount = 0;
+                            while (_voiceGenerationTaskQueue.IsRunning && waitCount < 50)
+                            {
+                                await Task.Delay(100);
+                                waitCount++;
+                            }
+
+                            this.Invoke(new Action(() =>
+                            {
+                                foreach (var task in tasksToRestart)
+                                {
+                                    restartTaskWithVerification(task);
+                                }
+                                save语音生成任务清单Data();
+                                refresh语音生成任务清单DataGridView();
+                                _voiceGenerationTaskQueue.Start();
+                            }));
+                        });
+                    }
+                    else
+                    {
+                        foreach (var task in tasksToRestart)
+                        {
+                            restartTaskWithVerification(task);
+                        }
+                        save语音生成任务清单Data();
+                        refresh语音生成任务清单DataGridView();
+                        _voiceGenerationTaskQueue.Start();
+                    }
                 }
             }
         }
@@ -951,7 +1048,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                             string fileName = Path.GetFileName(task.SaveFile);
                             task.SaveFile = Path.Combine(folderDialog.SelectedPath, fileName);
                         }
-                        OnProjectModified();
+                        save语音生成任务清单Data();
                         refresh语音生成任务清单DataGridView();
                     }
                 }
@@ -1069,6 +1166,24 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                         row.DefaultCellStyle.BackColor = dgv_语音生成_任务清单.DefaultCellStyle.BackColor;
                         row.DefaultCellStyle.SelectionBackColor = dgv_语音生成_任务清单.DefaultCellStyle.SelectionBackColor;
                         break;
+                    case VoiceGenerationTaskStatus.转换MP3:
+                        if (isSelected)
+                        {
+                            row.DefaultCellStyle.SelectionBackColor = Color.Gray;
+                        }
+                        else
+                        {
+                            row.DefaultCellStyle.BackColor = Color.LightGray;
+                        }
+                        row.DefaultCellStyle.ForeColor = dgv_语音生成_任务清单.DefaultCellStyle.ForeColor;
+                        row.DefaultCellStyle.SelectionForeColor = dgv_语音生成_任务清单.DefaultCellStyle.SelectionForeColor;
+                        break;
+                    case VoiceGenerationTaskStatus.转换MP3失败:
+                        row.DefaultCellStyle.ForeColor = Color.FromArgb(191, 0, 0);
+                        row.DefaultCellStyle.SelectionForeColor = dgv_语音生成_任务清单.DefaultCellStyle.SelectionForeColor;
+                        row.DefaultCellStyle.BackColor = dgv_语音生成_任务清单.DefaultCellStyle.BackColor;
+                        row.DefaultCellStyle.SelectionBackColor = dgv_语音生成_任务清单.DefaultCellStyle.SelectionBackColor;
+                        break;
                     case VoiceGenerationTaskStatus.未开始:
                     default:
                         row.DefaultCellStyle.BackColor = dgv_语音生成_任务清单.DefaultCellStyle.BackColor;
@@ -1181,6 +1296,43 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             update语音生成选中行信息();
         }
 
+        /// <summary>
+        /// 清空所有已完成任务并清理相关资源。
+        /// </summary>
+        private void clearCompletedTasksAndCleanup()
+        {
+            var completedTasks = _voiceGenerationTaskQueue.Tasks
+                .Where(t => t.Status == VoiceGenerationTaskStatus.已完成)
+                .ToList();
+
+            foreach (var task in completedTasks)
+            {
+                if (task.Items != null)
+                {
+                    foreach (var item in task.Items)
+                    {
+                        if (!string.IsNullOrWhiteSpace(item.TempFile) && File.Exists(item.TempFile))
+                        {
+                            try
+                            {
+                                File.Delete(item.TempFile);
+                            }
+                            catch
+                            {
+                            }
+                        }
+                    }
+                }
+            }
+
+            foreach (var task in completedTasks)
+            {
+                _voiceGenerationTaskQueue.Tasks.Remove(task);
+            }
+
+            update语音生成选中行信息();
+        }
+
         #endregion
 
         #region 业务操作
@@ -1245,6 +1397,237 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         }
 
         /// <summary>
+        /// 事件处理：点击"清理临时文件"菜单项。
+        /// </summary>
+        private void 清理临时文件MToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            List<VoiceGenerationTask> selectedTasks = new List<VoiceGenerationTask>();
+            foreach (DataGridViewRow row in dgv_语音生成_任务清单.SelectedRows)
+            {
+                if (row.DataBoundItem is VoiceGenerationTask task)
+                {
+                    selectedTasks.Add(task);
+                }
+            }
+
+            if (selectedTasks.Count == 0)
+            {
+                return;
+            }
+
+            string message = selectedTasks.Count == 1
+                ? "确定要清理选中任务的临时文件吗？"
+                : $"确定要清理选中的 {selectedTasks.Count} 个任务的临时文件吗？";
+
+            DialogResult result = MessageBox.Show(
+                message,
+                "确认清理",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question,
+                MessageBoxDefaultButton.Button2);
+
+            if (result != DialogResult.Yes)
+            {
+                return;
+            }
+
+            int deletedCount = 0;
+            foreach (var task in selectedTasks)
+            {
+                if (task.Items != null)
+                {
+                    foreach (var item in task.Items)
+                    {
+                        if (!string.IsNullOrWhiteSpace(item.TempFile) && File.Exists(item.TempFile))
+                        {
+                            try
+                            {
+                                File.Delete(item.TempFile);
+                                deletedCount++;
+                            }
+                            catch
+                            {
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (deletedCount > 0)
+            {
+                MessageBox.Show($"已清理 {deletedCount} 个临时文件。", "清理完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            else
+            {
+                MessageBox.Show("没有找到需要清理的临时文件。", "清理完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+
+        /// <summary>
+        /// 事件处理：点击"转换为MP3"菜单项。
+        /// </summary>
+        private void 转换为MP3PToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (dgv_语音生成_任务清单.SelectedRows.Count == 0)
+            {
+                return;
+            }
+
+            List<VoiceGenerationTask> selectedTasks = new List<VoiceGenerationTask>();
+            foreach (DataGridViewRow row in dgv_语音生成_任务清单.SelectedRows)
+            {
+                if (row.DataBoundItem is VoiceGenerationTask task)
+                {
+                    selectedTasks.Add(task);
+                }
+            }
+
+            if (selectedTasks.Count == 0)
+            {
+                return;
+            }
+
+            if (selectedTasks.Count == 1)
+            {
+                convertSingleTaskToMp3(selectedTasks[0]);
+            }
+            else
+            {
+                convertMultipleTasksToMp3(selectedTasks);
+            }
+        }
+
+        /// <summary>
+        /// 转换单个任务为MP3格式。
+        /// </summary>
+        /// <param name="task">要转换的任务。</param>
+        private void convertSingleTaskToMp3(VoiceGenerationTask task)
+        {
+            if (task == null || string.IsNullOrWhiteSpace(task.SaveFile))
+            {
+                return;
+            }
+
+            string wavFile = task.SaveFile;
+            string folder = Path.GetDirectoryName(wavFile);
+            string fileNameWithoutExt = Path.GetFileNameWithoutExtension(wavFile);
+            string defaultMp3File = Path.Combine(folder, $"{fileNameWithoutExt}.mp3");
+
+            using (SaveFileDialog saveDialog = new SaveFileDialog())
+            {
+                saveDialog.Filter = "MP3文件|*.mp3";
+                saveDialog.Title = "保存MP3文件";
+                saveDialog.InitialDirectory = folder;
+                saveDialog.FileName = $"{fileNameWithoutExt}.mp3";
+                saveDialog.OverwritePrompt = true;
+
+                if (saveDialog.ShowDialog() == DialogResult.OK)
+                {
+                    string mp3File = saveDialog.FileName;
+                    _mp3ConversionQueue.AddConversionTask(task, mp3File);
+                    _mp3ConversionQueue.Start();
+                }
+            }
+        }
+
+        /// <summary>
+        /// 批量转换多个任务为MP3格式。
+        /// </summary>
+        /// <param name="tasks">要转换的任务列表。</param>
+        private void convertMultipleTasksToMp3(List<VoiceGenerationTask> tasks)
+        {
+            string message = $"将把选中的 {tasks.Count} 个wav文件转换为mp3格式，\nmp3文件将保存到同文件夹下的同文件名。\n\n确定要继续吗？";
+
+            DialogResult result = MessageBox.Show(
+                message,
+                "批量转换为MP3",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question,
+                MessageBoxDefaultButton.Button2);
+
+            if (result != DialogResult.Yes)
+            {
+                return;
+            }
+
+            foreach (var task in tasks)
+            {
+                if (string.IsNullOrWhiteSpace(task.SaveFile))
+                {
+                    continue;
+                }
+
+                string wavFile = task.SaveFile;
+                string folder = Path.GetDirectoryName(wavFile);
+                string fileNameWithoutExt = Path.GetFileNameWithoutExtension(wavFile);
+                string mp3File = Path.Combine(folder, $"{fileNameWithoutExt}.mp3");
+
+                _mp3ConversionQueue.AddConversionTask(task, mp3File);
+            }
+
+            _mp3ConversionQueue.Start();
+        }
+
+        /// <summary>
+        /// 事件处理：MP3转换开始。
+        /// </summary>
+        private void Mp3ConversionQueue_ConversionStarted(object sender, Mp3ConversionEventArgs e)
+        {
+            if (InvokeRequired)
+            {
+                Invoke(new Action(() => Mp3ConversionQueue_ConversionStarted(sender, e)));
+                return;
+            }
+
+            e.Task.ProgressDetail = "正在转换为MP3...";
+        }
+
+        /// <summary>
+        /// 事件处理：MP3转换完成。
+        /// </summary>
+        private void Mp3ConversionQueue_ConversionCompleted(object sender, Mp3ConversionEventArgs e)
+        {
+            if (InvokeRequired)
+            {
+                Invoke(new Action(() => Mp3ConversionQueue_ConversionCompleted(sender, e)));
+                return;
+            }
+
+            e.Task.Status = VoiceGenerationTaskStatus.已完成;
+            e.Task.ProgressDetail = "MP3转换完成";
+        }
+
+        /// <summary>
+        /// 事件处理：MP3转换失败。
+        /// </summary>
+        private void Mp3ConversionQueue_ConversionFailed(object sender, Mp3ConversionEventArgs e)
+        {
+            if (InvokeRequired)
+            {
+                Invoke(new Action(() => Mp3ConversionQueue_ConversionFailed(sender, e)));
+                return;
+            }
+
+            e.Task.Status = VoiceGenerationTaskStatus.转换MP3失败;
+            e.Task.ProgressDetail = $"MP3转换失败: {e.ErrorMessage}";
+        }
+
+        /// <summary>
+        /// 事件处理：MP3转换取消。
+        /// </summary>
+        private void Mp3ConversionQueue_ConversionCancelled(object sender, Mp3ConversionEventArgs e)
+        {
+            if (InvokeRequired)
+            {
+                Invoke(new Action(() => Mp3ConversionQueue_ConversionCancelled(sender, e)));
+                return;
+            }
+
+            e.Task.Status = VoiceGenerationTaskStatus.已完成;
+            e.Task.ProgressDetail = "转换已取消";
+        }
+
+        /// <summary>
         /// 将选中的行向上移动（提前）。
         /// </summary>
         private void moveSelectedRowsUp()
@@ -1301,7 +1684,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
 
             if (hasMoved)
             {
-                OnProjectModified();
+                save语音生成任务清单Data();
             }
 
             DataGridViewHelper.RefreshAndRestoreSelection(dgv_语音生成_任务清单, _voiceGenerationTaskQueue.Tasks, selectedItems);
@@ -1368,7 +1751,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
 
             if (hasMoved)
             {
-                OnProjectModified();
+                save语音生成任务清单Data();
             }
 
             DataGridViewHelper.RefreshAndRestoreSelection(dgv_语音生成_任务清单, _voiceGenerationTaskQueue.Tasks, selectedItems);
@@ -1765,7 +2148,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         }
 
         /// <summary>
-        /// 保存语音生成任务清单到项目文件对象。
+        /// 保存语音生成任务清单到系统配置。
         /// </summary>
         private void save语音生成任务清单Data()
         {
@@ -1773,7 +2156,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         }
 
         /// <summary>
-        /// 保存语音生成任务清单到项目文件对象。
+        /// 保存语音生成任务清单到系统配置。
         /// </summary>
         /// <param name="engineId">引擎ID。</param>
         private void save语音生成任务清单Data(string engineId)
@@ -1797,7 +2180,8 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                     Volume = task.Volume,
                     SpaceTime = task.SpaceTime,
                     IsPreview = task.IsPreview,
-                    PreviewSourceName = task.PreviewSourceName
+                    PreviewSourceName = task.PreviewSourceName,
+                    Mp3OutputFile = task.Mp3OutputFile
                 };
 
                 foreach (VoiceGenerationTaskItem item in task.Items)
@@ -1818,7 +2202,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
 
                 tasks.Add(voiceTask);
             }
-            ProjectFile?.SaveVoiceGenerationTasks(engineId, tasks);
+            Setting.SaveVoiceGenerationTasks(engineId, tasks);
         }
 
         /// <summary>
@@ -1837,7 +2221,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         {
             List<CoreVoiceGenerationTask> loadedTasks = string.IsNullOrEmpty(engineId)
                 ? new List<CoreVoiceGenerationTask>()
-                : ProjectFile?.LoadVoiceGenerationTasks(engineId) ?? new List<CoreVoiceGenerationTask>();
+                : Setting.LoadVoiceGenerationTasks(engineId);
 
             _voiceGenerationTaskQueue.Tasks.RaiseListChangedEvents = false;
             _voiceGenerationTaskQueue.Tasks.Clear();
@@ -1859,7 +2243,8 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                         Volume = task.Volume,
                         SpaceTime = task.SpaceTime,
                         IsPreview = task.IsPreview,
-                        PreviewSourceName = task.PreviewSourceName
+                        PreviewSourceName = task.PreviewSourceName,
+                        Mp3OutputFile = task.Mp3OutputFile
                     };
 
                     if (voiceTask.Status == VoiceGenerationTaskStatus.正在生成 ||
@@ -1867,6 +2252,12 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                     {
                         voiceTask.Status = VoiceGenerationTaskStatus.排队中;
                         hasInterruptedTask = true;
+                    }
+
+                    if (voiceTask.Status == VoiceGenerationTaskStatus.转换MP3)
+                    {
+                        voiceTask.Status = VoiceGenerationTaskStatus.已完成;
+                        voiceTask.ProgressDetail = "转换已中断";
                     }
 
                     List<VoiceGenerationTaskItem> items = new List<VoiceGenerationTaskItem>();

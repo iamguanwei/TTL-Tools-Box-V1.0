@@ -74,6 +74,12 @@ namespace GW.TTLtoolsBox.Core.Entity
         public string PreviewSourceName { get; set; } = string.Empty;
 
         /// <summary>
+        /// 获取或设置MP3输出文件路径。
+        /// </summary>
+        [DataMember(Name = "mp3OutputFile")]
+        public string Mp3OutputFile { get; set; } = string.Empty;
+
+        /// <summary>
         /// 获取或设置具体的任务项列表。
         /// </summary>
         [DataMember(Name = "items")]

@@ -318,7 +318,6 @@ namespace GW.TTLtoolsBox.WinFormUi
                     load多音字替换PanelData();
                     load角色和情绪指定PanelData();
                     load语音生成预处理PanelData();
-                    load语音生成PanelData();
 
                     _isSaveOnClose = true;
                     _isProjectModified = false;
@@ -348,7 +347,6 @@ namespace GW.TTLtoolsBox.WinFormUi
             save角色映射PanelData();
             save角色和情绪指定PanelData();
             save语音生成预处理PanelData();
-            save语音生成PanelData();
 
             getProjectFile()?.Save();
             _isProjectModified = false;
@@ -397,14 +395,12 @@ namespace GW.TTLtoolsBox.WinFormUi
         {
             string filePath = null;
 
-            // 如果通过命令行指定了项目文件，直接加载
             if (!string.IsNullOrEmpty(_currentProjectFilePath) && File.Exists(_currentProjectFilePath))
             {
                 filePath = _currentProjectFilePath;
             }
             else
             {
-                // 使用默认项目文件，沿用之前的逻辑
                 var button = MessageBox.Show(
                     "选择\"是\"将恢复上次关闭时编辑的内容；" +
                     "选择\"否\"将不恢复之前的内容，且在退出时保存新的内容；" +
@@ -421,7 +417,9 @@ namespace GW.TTLtoolsBox.WinFormUi
                     _isProjectModified = false;
                     _isSaveOnClose = true;
                     clearProjectContent();
+                    load文本拆分();
                     _ttlSchemePanel?.StartTtlEngineConnectionIfSelected();
+                    load语音生成PanelData();
                     updateTitleBar();
                     return;
                 }
@@ -432,6 +430,8 @@ namespace GW.TTLtoolsBox.WinFormUi
                     _isProjectModified = false;
                     setProjectMenuEnabled(false);
                     clearProjectContent();
+                    load文本拆分();
+                    load语音生成PanelData();
                     updateTitleBar();
                     return;
                 }
@@ -440,6 +440,7 @@ namespace GW.TTLtoolsBox.WinFormUi
             loadProjectFile(filePath);
             _isInitializing = false;
             _ttlSchemePanel?.StartTtlEngineConnectionIfSelected();
+            load语音生成PanelData();
 
             if (!string.IsNullOrEmpty(_currentProjectFilePath) && File.Exists(_currentProjectFilePath))
             {
@@ -496,7 +497,6 @@ namespace GW.TTLtoolsBox.WinFormUi
                 else
                 {
                     saveProjectFile();
-                    MessageBox.Show("项目已保存", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return true;
                 }
             }
@@ -536,7 +536,6 @@ namespace GW.TTLtoolsBox.WinFormUi
                 _isSaveOnClose = true;
                 setProjectMenuEnabled(true);
                 addToRecentProjects(saveFileDialog.FileName);
-                MessageBox.Show("项目已保存", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return true;
             }
 
@@ -553,14 +552,12 @@ namespace GW.TTLtoolsBox.WinFormUi
             _polyphonicReplacePanel?.ClearPanel();
             _roleEmotionPanel?.ClearData();
             _voicePreprocessPanel?.ClearFinalText();
-            _voiceGenerationPanel?.ClearAllTasks();
             _roleMappingPanel?.ClearCachedRoleNames();
 
             load角色映射PanelData();
             load多音字替换PanelData();
             load角色和情绪指定PanelData();
             load语音生成预处理PanelData();
-            load语音生成PanelData();
             _voicePreprocessPanel?.LoadDefaultSpeakerSettings();
         }
 
@@ -595,6 +592,7 @@ namespace GW.TTLtoolsBox.WinFormUi
             _isProjectModified = false;
 
             clearProjectContent();
+            load文本拆分();
 
             updateTitleBar();
             _isSaveOnClose = true;
@@ -656,7 +654,6 @@ namespace GW.TTLtoolsBox.WinFormUi
             else
             {
                 saveProjectFile();
-                MessageBox.Show("项目已保存", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
 
@@ -1001,7 +998,6 @@ namespace GW.TTLtoolsBox.WinFormUi
                     _voicePreprocessPanel.CurrentEngineId = e.PreviousEngineId;
                     _voicePreprocessPanel.SaveData();
 
-                    _voiceGenerationPanel.ProjectFile = getProjectFile();
                     _voiceGenerationPanel.CurrentEngineId = e.PreviousEngineId;
                     _voiceGenerationPanel.SaveData();
                 }
@@ -1019,6 +1015,7 @@ namespace GW.TTLtoolsBox.WinFormUi
             _ttlSchemePanel.SpeakersChanged += (s, e) =>
             {
                 refresh角色映射SourceNameOptions();
+                _roleMappingPanel?.RefreshRemarkColumnWidth();
                 _roleEmotionPanel?.RefreshRoleList();
                 _voicePreprocessPanel?.LoadDefaultSpeakerSettings();
             };
@@ -1031,6 +1028,14 @@ namespace GW.TTLtoolsBox.WinFormUi
             _ttlSchemePanel.ConnectionStatusChanged += (s, e) =>
             {
                 updateTtlEngineConnectionStatusLabel();
+            };
+            _ttlSchemePanel.SetDefaultSpeakerRequested += (s, e) =>
+            {
+                _voicePreprocessPanel?.SetDefaultSpeaker(e.Speaker);
+            };
+            _ttlSchemePanel.AddRoleMappingRequested += (s, e) =>
+            {
+                _roleMappingPanel?.AddRoleMapping(e.SourceName);
             };
 
             // 将面板添加到TabPage
@@ -1165,7 +1170,7 @@ namespace GW.TTLtoolsBox.WinFormUi
             _voiceGenerationPanel.PlaySound = playSound;
             _voiceGenerationPanel.FindSpeaker = findSpeakerByShowName;
 
-            _voiceGenerationPanel.ProjectModified += (s, e) => markProjectModified();
+            _voiceGenerationPanel.ProjectModified += (s, e) => { };
             _voiceGenerationPanel.PreviewTaskCompleted += (s, e) => _ttlSchemePanel?.UpdateAutoGeneratePreviewButtonStatus(true);
             _voiceGenerationPanel.OpenPreviewVoiceFolderRequested += (s, e) => Process.Start("explorer.exe", TTL角色预览声音_文件夹);
 
@@ -1184,7 +1189,6 @@ namespace GW.TTLtoolsBox.WinFormUi
         {
             if (_voiceGenerationPanel != null)
             {
-                _voiceGenerationPanel.ProjectFile = getProjectFile();
                 _voiceGenerationPanel.CurrentEngineId = getCurrentEngineId();
                 _voiceGenerationPanel.LoadData();
             }
@@ -1197,7 +1201,6 @@ namespace GW.TTLtoolsBox.WinFormUi
         {
             if (_voiceGenerationPanel != null)
             {
-                _voiceGenerationPanel.ProjectFile = getProjectFile();
                 _voiceGenerationPanel.CurrentEngineId = getCurrentEngineId();
                 _voiceGenerationPanel.SaveData();
             }
@@ -1211,7 +1214,6 @@ namespace GW.TTLtoolsBox.WinFormUi
         {
             if (_voiceGenerationPanel != null)
             {
-                _voiceGenerationPanel.ProjectFile = getProjectFile();
                 _voiceGenerationPanel.SaveData(engineId);
             }
         }

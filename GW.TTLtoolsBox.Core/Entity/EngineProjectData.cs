@@ -14,12 +14,6 @@ namespace GW.TTLtoolsBox.Core.Entity
         #region 属性
 
         /// <summary>
-        /// 获取或设置文本拆分的拆分长度。
-        /// </summary>
-        [DataMember(Name = "textSplit_splitLength")]
-        public int TextSplit_SplitLength { get; set; } = 100;
-
-        /// <summary>
         /// 获取或设置多音字替换的最终文本。
         /// </summary>
         [DataMember(Name = "polyReplace_finalText")]
@@ -48,6 +42,42 @@ namespace GW.TTLtoolsBox.Core.Entity
         /// </summary>
         [DataMember(Name = "roleMappingData")]
         public List<RoleMappingItem> RoleMappingData { get; set; } = new List<RoleMappingItem>();
+
+        /// <summary>
+        /// 获取或设置默认朗读者名称。
+        /// </summary>
+        [DataMember(Name = "voicePreprocess_defaultSpeaker")]
+        public string VoicePreprocess_DefaultSpeaker { get; set; } = string.Empty;
+
+        /// <summary>
+        /// 获取或设置全局语速值。
+        /// </summary>
+        [DataMember(Name = "voicePreprocess_globalSpeed")]
+        public int VoicePreprocess_GlobalSpeed { get; set; } = 100;
+
+        /// <summary>
+        /// 获取或设置是否启用全局语速。
+        /// </summary>
+        [DataMember(Name = "voicePreprocess_useGlobalSpeed")]
+        public bool VoicePreprocess_UseGlobalSpeed { get; set; } = false;
+
+        /// <summary>
+        /// 获取或设置全局音量值。
+        /// </summary>
+        [DataMember(Name = "voicePreprocess_globalVolume")]
+        public int VoicePreprocess_GlobalVolume { get; set; } = 100;
+
+        /// <summary>
+        /// 获取或设置是否启用全局音量。
+        /// </summary>
+        [DataMember(Name = "voicePreprocess_useGlobalVolume")]
+        public bool VoicePreprocess_UseGlobalVolume { get; set; } = false;
+
+        /// <summary>
+        /// 获取或设置段间空白时长（秒）。
+        /// </summary>
+        [DataMember(Name = "voicePreprocess_blankDuration")]
+        public decimal VoicePreprocess_BlankDuration { get; set; } = 1;
 
         #endregion
 

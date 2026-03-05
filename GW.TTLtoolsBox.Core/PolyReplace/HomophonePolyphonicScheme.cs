@@ -79,7 +79,7 @@ namespace GW.TTLtoolsBox.Core.PolyReplace
         public override IPolyphonicScheme Clone()
         {
             HomophonePolyphonicScheme clone = new HomophonePolyphonicScheme();
-            CopyTo(clone);
+            CopyTo(clone);            
             return clone;
         }
 

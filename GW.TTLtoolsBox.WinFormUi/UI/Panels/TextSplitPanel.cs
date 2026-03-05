@@ -131,7 +131,6 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             {
                 projectFile.TextSplit_OriginalText = this.tb_原始文本.Text;
                 projectFile.TextSplit_FinalText = this.tb_最终文本.Text;
-                projectFile.SetTextSplit_SplitLength(CurrentEngineId, (int)this.nud_拆分长度.Value);
             }
         }
 
@@ -148,7 +147,8 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 {
                     this.tb_原始文本.Text = projectFile.TextSplit_OriginalText;
                     this.tb_最终文本.Text = projectFile.TextSplit_FinalText;
-                    this.nud_拆分长度.Value = projectFile.GetTextSplit_SplitLength(CurrentEngineId, 100);
+                    this.nud_拆分长度.Value = Setting.GetTextSplit_SplitLength(CurrentEngineId, 100);
+                    this.cb_文本拆分_按句子拆分_忽略换行符.Checked = Setting.GetTextSplit_IgnoreLineBreaks(CurrentEngineId, true);
                 });
                 _isLoading = false;
             }
@@ -172,6 +172,11 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// </summary>
         private bool _isLoading = false;
 
+        /// <summary>
+        /// 工具提示组件。
+        /// </summary>
+        private ToolTip _toolTip;
+
         #endregion
 
         #region UI初始化
@@ -191,15 +196,18 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.rb_拆分参数_按对话拆分.Text += $" [ {对话_分割符号} ]";
             this.rb_拆分参数_按对话拆分.Checked = bool.Parse(Setting.GetValue(this.rb_拆分参数_按对话拆分.Name, "false"));
 
-            this.rb_拆分参数_按空行拆分.Checked = bool.Parse(Setting.GetValue(this.rb_拆分参数_按空行拆分.Name, "false"));
+            this.cb_文本拆分_按句子拆分_忽略换行符.Checked = Setting.GetTextSplit_IgnoreLineBreaks(CurrentEngineId, true);
 
             this.nud_拆分长度.Minimum = 分割_最小长度;
             this.nud_拆分长度.Maximum = 100000;
 
             this.rb_拆分方式_按句子拆分.CheckedChanged += rb_拆分方式_CheckedChanged;
             this.rb_拆分参数_按对话拆分.CheckedChanged += rb_拆分方式_CheckedChanged;
-            this.rb_拆分参数_按空行拆分.CheckedChanged += rb_拆分方式_CheckedChanged;
             this.nud_拆分长度.ValueChanged += nud_拆分长度_ValueChanged;
+            this.cb_文本拆分_按句子拆分_忽略换行符.CheckedChanged += cb_文本拆分_按句子拆分_忽略换行符_CheckedChanged;
+
+            _toolTip = new ToolTip();
+            _toolTip.SetToolTip(this.cb_文本拆分_按句子拆分_忽略换行符, "勾选后，换行符不再作为硬分隔，而是先按空行拆分，再按句子拆分。");
 
             refresh文本拆分Ui();
         }
@@ -247,6 +255,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 // 参数
                 this.lab_拆分长度.Enabled = this.rb_拆分方式_按句子拆分.Checked;
                 this.nud_拆分长度.Enabled = this.rb_拆分方式_按句子拆分.Checked;
+                this.cb_文本拆分_按句子拆分_忽略换行符.Enabled = this.rb_拆分方式_按句子拆分.Checked;
 
                 this.bt_开始拆分.Enabled = inputText.Length > 0;
                 this.bt_插入段落分隔符.Enabled = inputText.Length > 0;
@@ -284,38 +293,44 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             string sText = this.tb_原始文本.Text;
             if (string.IsNullOrWhiteSpace(sText) == false)
             {
-                string dText;
+                string[] paragraphs = sText.Split(new string[] { 生成段落_分隔符 }, StringSplitOptions.None);
+                List<string> processedParagraphs = new List<string>();
 
-                if (this.rb_拆分参数_按空行拆分.Checked == true)
+                foreach (string paragraph in paragraphs)
                 {
-                    dText = TextSplitHelper.SplitByEmptyLine(sText);
-                }
-                else
-                {
-                    string[] paragraphs = sText.Split(new string[] { 生成段落_分隔符 }, StringSplitOptions.None);
-                    List<string> processedParagraphs = new List<string>();
+                    string processedText = paragraph;
 
-                    foreach (string paragraph in paragraphs)
+                    if (this.rb_拆分方式_按句子拆分.Checked == true)
                     {
-                        string processedText = paragraph;
+                        bool ignoreLineBreaks = this.cb_文本拆分_按句子拆分_忽略换行符.Checked;
+                        string preprocessedText = TextSplitHelper.PreprocessText(paragraph, ignoreLineBreaks);
 
-                        if (this.rb_拆分方式_按句子拆分.Checked == true)
-                            processedText = TextSplitHelper.SplitText(
-                                paragraph,
+                        if (ignoreLineBreaks)
+                        {
+                            processedText = TextSplitHelper.SplitTextIgnoreLineBreaks(
+                                preprocessedText,
                                 (int)分割_最小长度,
                                 (int)this.nud_拆分长度.Value,
                                 整句_分割符号.ToCharArray(),
                                 半句_分割符号.ToCharArray());
-                        else if (this.rb_拆分参数_按对话拆分.Checked == true)
-                            processedText = TextSplitHelper.SplitText(paragraph, 对话_分割符号.ToCharArray());
-
-                        processedParagraphs.Add(processedText);
+                        }
+                        else
+                        {
+                            processedText = TextSplitHelper.SplitText(
+                                preprocessedText,
+                                (int)分割_最小长度,
+                                (int)this.nud_拆分长度.Value,
+                                整句_分割符号.ToCharArray(),
+                                半句_分割符号.ToCharArray());
+                        }
                     }
+                    else if (this.rb_拆分参数_按对话拆分.Checked == true)
+                        processedText = TextSplitHelper.SplitText(paragraph, 对话_分割符号.ToCharArray());
 
-                    dText = string.Join(生成段落_分隔符, processedParagraphs);
+                    processedParagraphs.Add(processedText);
                 }
 
-                this.tb_最终文本.Text = dText;
+                this.tb_最终文本.Text = string.Join(生成段落_分隔符, processedParagraphs);
             }
         }
 
@@ -411,7 +426,6 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         {
             Setting.SetValue(this.rb_拆分方式_按句子拆分.Name, this.rb_拆分方式_按句子拆分.Checked.ToString());
             Setting.SetValue(this.rb_拆分参数_按对话拆分.Name, this.rb_拆分参数_按对话拆分.Checked.ToString());
-            Setting.SetValue(this.rb_拆分参数_按空行拆分.Name, this.rb_拆分参数_按空行拆分.Checked.ToString());
 
             do拆分文本Job();
             refresh文本拆分Ui();
@@ -466,7 +480,20 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         {
             if (!_isLoading)
             {
-                onProjectModified();
+                Setting.SetTextSplit_SplitLength(CurrentEngineId, (int)this.nud_拆分长度.Value);
+            }
+        }
+
+        /// <summary>
+        /// 事件处理：忽略换行符复选框状态改变。
+        /// </summary>
+        /// <param name="sender">发送者。</param>
+        /// <param name="e">事件参数。</param>
+        private void cb_文本拆分_按句子拆分_忽略换行符_CheckedChanged(object sender, EventArgs e)
+        {
+            if (!_isLoading)
+            {
+                Setting.SetTextSplit_IgnoreLineBreaks(CurrentEngineId, this.cb_文本拆分_按句子拆分_忽略换行符.Checked);
             }
         }
 

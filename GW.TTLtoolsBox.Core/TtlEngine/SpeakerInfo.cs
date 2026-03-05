@@ -28,6 +28,11 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
         public int Volume { get; set; } = 100;
 
         /// <summary>
+        /// 获取或设置备注信息。
+        /// </summary>
+        public string Remark { get; set; } = string.Empty;
+
+        /// <summary>
         /// 初始化朗读者信息类的新实例。
         /// </summary>
         /// <param name="sourceName">源名称</param>
@@ -37,6 +42,7 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
             VoiceSamplePath = string.Empty;
             Speed = 100;
             Volume = 100;
+            Remark = string.Empty;
         }
 
         /// <summary>
@@ -50,6 +56,7 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
             VoiceSamplePath = voiceSamplePath ?? string.Empty;
             Speed = 100;
             Volume = 100;
+            Remark = string.Empty;
         }
 
         /// <summary>
@@ -64,6 +71,7 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
             VoiceSamplePath = voiceSamplePath ?? string.Empty;
             Speed = speed;
             Volume = 100;
+            Remark = string.Empty;
         }
 
         /// <summary>
@@ -79,6 +87,24 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
             VoiceSamplePath = voiceSamplePath ?? string.Empty;
             Speed = speed;
             Volume = volume;
+            Remark = string.Empty;
+        }
+
+        /// <summary>
+        /// 初始化朗读者信息类的新实例。
+        /// </summary>
+        /// <param name="sourceName">源名称</param>
+        /// <param name="voiceSamplePath">声音样本存储位置</param>
+        /// <param name="speed">朗读速度</param>
+        /// <param name="volume">音量</param>
+        /// <param name="remark">备注信息</param>
+        public SpeakerInfo(string sourceName, string voiceSamplePath, int speed, int volume, string remark)
+        {
+            SourceName = sourceName;
+            VoiceSamplePath = voiceSamplePath ?? string.Empty;
+            Speed = speed;
+            Volume = volume;
+            Remark = remark ?? string.Empty;
         }
 
         /// <summary>
@@ -87,7 +113,8 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
         /// <returns>序列化字符串</returns>
         public override string ToString()
         {
-            return $"{SourceName}|{VoiceSamplePath}|{Speed}|{Volume}";
+            string escapedRemark = Remark.Replace("|", "&#124;");
+            return $"{SourceName}|{VoiceSamplePath}|{Speed}|{Volume}|{escapedRemark}";
         }
 
         /// <summary>
@@ -136,6 +163,15 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
                     Volume = 100;
                 }
 
+                if (parts.Length >= 5)
+                {
+                    Remark = parts[4].Replace("&#124;", "|");
+                }
+                else
+                {
+                    Remark = string.Empty;
+                }
+
                 return true;
             }
             catch
@@ -150,7 +186,7 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
         /// <returns>当前对象的浅表克隆体</returns>
         public SpeakerInfo Clone()
         {
-            return new SpeakerInfo(SourceName, VoiceSamplePath, Speed, Volume);
+            return new SpeakerInfo(SourceName, VoiceSamplePath, Speed, Volume, Remark);
         }
     }
 }

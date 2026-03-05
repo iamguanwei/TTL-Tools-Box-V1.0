@@ -42,7 +42,11 @@ namespace GW.TTLtoolsBox.Core.TextSplit
             string[] _textBlocks = originalText.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
             List<string> _resultBlocks = new List<string>();
 
-            // 3. 逐个处理每个文本块
+            // 3. 构建分隔符集合（用于后续合并判断）
+            HashSet<char> _mainSepSet = new HashSet<char>(mainSeparators);
+            HashSet<char> _subSepSet = new HashSet<char>(subSeparators);
+
+            // 4. 逐个处理每个文本块
             foreach (string block in _textBlocks)
             {
                 if (string.IsNullOrEmpty(block))
@@ -52,10 +56,15 @@ namespace GW.TTLtoolsBox.Core.TextSplit
                 }
 
                 List<string> splitBlockResult = processSingleBlock(block, minLength, maxLength, mainSeparators, subSeparators, trimSegments);
+
+                // 合并仅包含分隔符的段落
+                if (_mainSepSet.Count > 0) mergeSeparatorOnlySegments(splitBlockResult, _mainSepSet);
+                if (_subSepSet.Count > 0) mergeSeparatorOnlySegments(splitBlockResult, _subSepSet);
+
                 _resultBlocks.AddRange(splitBlockResult);
             }
 
-            // 4. 拼接所有结果（恢复换行）
+            // 5. 拼接所有结果（恢复换行）
             return string.Join("\r\n", _resultBlocks);
         }
 
@@ -79,11 +88,14 @@ namespace GW.TTLtoolsBox.Core.TextSplit
 
             // 3. 构建分隔符映射（开始分隔符到结束分隔符的映射）
             Dictionary<char, char> _separatorMap = new Dictionary<char, char>();
+            HashSet<char> _allSeparators = new HashSet<char>(); // 所有对话分隔符集合
             for (int i = 0; i < mainSeparators.Length; i += 2)
             {
                 if (i + 1 < mainSeparators.Length)
                 {
                     _separatorMap[mainSeparators[i]] = mainSeparators[i + 1];
+                    _allSeparators.Add(mainSeparators[i]);
+                    _allSeparators.Add(mainSeparators[i + 1]);
                 }
             }
 
@@ -97,11 +109,106 @@ namespace GW.TTLtoolsBox.Core.TextSplit
                 }
 
                 List<string> splitBlockResult = processDialogBlock(block, _separatorMap, trimSegments);
+
+                // 合并仅包含分隔符的段落
+                if (_allSeparators.Count > 0) mergeSeparatorOnlySegments(splitBlockResult, _allSeparators);
+
                 _resultBlocks.AddRange(splitBlockResult);
             }
 
             // 5. 拼接所有结果（恢复换行）
             return string.Join("\r\n", _resultBlocks);
+        }
+
+        /// <summary>
+        /// 按句子拆分文本（忽略换行符模式）。
+        /// </summary>
+        /// <param name="originalText">原始文本。</param>
+        /// <param name="minLength">拆分后段落最短长度（含分隔符）。</param>
+        /// <param name="maxLength">拆分后段落最长长度（含分隔符）。</param>
+        /// <param name="mainSeparators">主拆分分隔符数组（优先级高）。</param>
+        /// <param name="subSeparators">次拆分分隔符数组（兜底）。</param>
+        /// <param name="trimSegments">是否移除拆分后段落的首尾空白符（默认false）。</param>
+        /// <returns>拆分后的文本（段落间用\r\n分隔）。</returns>
+        /// <remarks>
+        /// 拆分规则：
+        /// - 先按空行拆分原始文本
+        /// - 每段内剔除换行符
+        /// - 再调用原有的按句子拆分逻辑
+        /// - 连续空行会产生空行段落：空行段落数 = max(0, 空行数 - 1)
+        /// </remarks>
+        public static string SplitTextIgnoreLineBreaks(
+            string originalText,
+            int minLength,
+            int maxLength,
+            char[] mainSeparators,
+            char[] subSeparators,
+            bool trimSegments = false)
+        {
+            if (string.IsNullOrEmpty(originalText)) return string.Empty;
+
+            string[] _lines = originalText.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
+            List<string> _paragraphs = new List<string>();
+            StringBuilder _currentParagraph = new StringBuilder();
+            int _emptyLineCount = 0;
+
+            foreach (string _line in _lines)
+            {
+                if (string.IsNullOrWhiteSpace(_line))
+                {
+                    _emptyLineCount++;
+                }
+                else
+                {
+                    if (_emptyLineCount > 0)
+                    {
+                        if (_currentParagraph.Length > 0)
+                        {
+                            string _paragraph = trimSegments ? _currentParagraph.ToString().Trim() : _currentParagraph.ToString();
+                            _paragraphs.Add(_paragraph);
+                            _currentParagraph.Clear();
+                        }
+                        for (int i = 0; i < _emptyLineCount - 1; i++)
+                        {
+                            _paragraphs.Add(string.Empty);
+                        }
+                    }
+                    _emptyLineCount = 0;
+                    if (_currentParagraph.Length > 0)
+                    {
+                        _currentParagraph.Append(" ");
+                    }
+                    _currentParagraph.Append(_line);
+                }
+            }
+
+            if (_emptyLineCount > 0)
+            {
+                if (_currentParagraph.Length > 0)
+                {
+                    string _paragraph = trimSegments ? _currentParagraph.ToString().Trim() : _currentParagraph.ToString();
+                    _paragraphs.Add(_paragraph);
+                    _currentParagraph.Clear();
+                }
+                for (int i = 0; i < _emptyLineCount - 1; i++)
+                {
+                    _paragraphs.Add(string.Empty);
+                }
+            }
+            else if (_currentParagraph.Length > 0)
+            {
+                string _lastParagraph = trimSegments ? _currentParagraph.ToString().Trim() : _currentParagraph.ToString();
+                _paragraphs.Add(_lastParagraph);
+            }
+
+            List<string> _resultParagraphs = new List<string>();
+            foreach (string _paragraph in _paragraphs)
+            {
+                string _splitResult = SplitText(_paragraph, minLength, maxLength, mainSeparators, subSeparators, trimSegments);
+                _resultParagraphs.Add(_splitResult);
+            }
+
+            return string.Join("\r\n", _resultParagraphs);
         }
 
         /// <summary>
@@ -162,9 +269,111 @@ namespace GW.TTLtoolsBox.Core.TextSplit
             return string.Join("\r\n", _paragraphs);
         }
 
+        /// <summary>
+        /// 预处理文本，为按句子拆分做准备。
+        /// </summary>
+        /// <param name="originalText">原始文本。</param>
+        /// <param name="ignoreLineBreaks">是否忽略换行符（启用空行+1处理）。</param>
+        /// <returns>预处理后的文本。</returns>
+        /// <remarks>
+        /// 处理规则：
+        /// 1. 去除每一行的前导和后续空格
+        /// 2. 若ignoreLineBreaks为true，对连续空行进行+1处理：
+        ///    - 连续N个空行会被转换为N+1个空行
+        /// </remarks>
+        public static string PreprocessText(string originalText, bool ignoreLineBreaks)
+        {
+            if (string.IsNullOrEmpty(originalText)) return string.Empty;
+
+            string[] _lines = originalText.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
+
+            for (int i = 0; i < _lines.Length; i++)
+            {
+                _lines[i] = _lines[i].Trim();
+            }
+
+            if (ignoreLineBreaks)
+            {
+                List<string> _resultLines = new List<string>();
+                int _emptyLineCount = 0;
+
+                foreach (string _line in _lines)
+                {
+                    if (string.IsNullOrEmpty(_line))
+                    {
+                        _emptyLineCount++;
+                    }
+                    else
+                    {
+                        if (_emptyLineCount > 0)
+                        {
+                            for (int i = 0; i < _emptyLineCount + 1; i++)
+                            {
+                                _resultLines.Add(string.Empty);
+                            }
+                            _emptyLineCount = 0;
+                        }
+                        _resultLines.Add(_line);
+                    }
+                }
+
+                if (_emptyLineCount > 0)
+                {
+                    for (int i = 0; i < _emptyLineCount + 1; i++)
+                    {
+                        _resultLines.Add(string.Empty);
+                    }
+                }
+
+                return string.Join("\r\n", _resultLines);
+            }
+
+            return string.Join("\r\n", _lines);
+        }
+
         #endregion
 
         #region private
+
+        /// <summary>
+        /// 合并仅包含分隔符的段落
+        /// </summary>
+        /// <param name="segments">拆分后的段落列表</param>
+        /// <param name="separators">分隔符集合</param>
+        /// <remarks>
+        /// 如果某一段只包含指定分隔符，则将其与上一段合并；如果没有上一段则舍弃。
+        /// </remarks>
+        private static void mergeSeparatorOnlySegments(List<string> segments, HashSet<char> separators)
+        {
+            for (int i = segments.Count - 1; i >= 0; i--)
+            {
+                string segment = segments[i];
+                if (string.IsNullOrEmpty(segment)) continue;
+
+                bool isOnlySeparators = true;
+                foreach (char c in segment)
+                {
+                    if (!separators.Contains(c))
+                    {
+                        isOnlySeparators = false;
+                        break;
+                    }
+                }
+
+                if (isOnlySeparators)
+                {
+                    if (i > 0)
+                    {
+                        segments[i - 1] += segment;
+                        segments.RemoveAt(i);
+                    }
+                    else
+                    {
+                        segments.RemoveAt(i);
+                    }
+                }
+            }
+        }
 
         /// <summary>
         /// 处理单个对话文本块（无换行的纯文本）

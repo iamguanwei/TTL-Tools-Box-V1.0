@@ -29,8 +29,8 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle2 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle3 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle4 = new System.Windows.Forms.DataGridViewCellStyle();
             this.sc_主分割 = new System.Windows.Forms.SplitContainer();
             this.gb_替换工作面板 = new System.Windows.Forms.GroupBox();
             this.pan_实施工作面板 = new System.Windows.Forms.Panel();
@@ -220,12 +220,12 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.lab_下文.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.lab_下文.Font = new System.Drawing.Font("微软雅黑", 18F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.lab_下文.Location = new System.Drawing.Point(3, 110);
+            this.lab_下文.Location = new System.Drawing.Point(291, 110);
             this.lab_下文.Name = "lab_下文";
-            this.lab_下文.Size = new System.Drawing.Size(575, 30);
+            this.lab_下文.Size = new System.Drawing.Size(287, 30);
             this.lab_下文.TabIndex = 0;
             this.lab_下文.Text = "这里显示下文...";
-            this.lab_下文.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            this.lab_下文.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // lab_替换目标
             // 
@@ -247,10 +247,10 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.lab_上文.Font = new System.Drawing.Font("微软雅黑", 18F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
             this.lab_上文.Location = new System.Drawing.Point(3, 24);
             this.lab_上文.Name = "lab_上文";
-            this.lab_上文.Size = new System.Drawing.Size(575, 30);
+            this.lab_上文.Size = new System.Drawing.Size(286, 30);
             this.lab_上文.TabIndex = 0;
             this.lab_上文.Text = "...这里显示上文";
-            this.lab_上文.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.lab_上文.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             // 
             // lab_选择多音字方案
             // 
@@ -323,23 +323,23 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             | System.Windows.Forms.AnchorStyles.Right)));
             this.dgv_多音字方案.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.DisplayedCells;
             this.dgv_多音字方案.AutoSizeRowsMode = System.Windows.Forms.DataGridViewAutoSizeRowsMode.DisplayedCells;
-            dataGridViewCellStyle1.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle1.BackColor = System.Drawing.SystemColors.Control;
-            dataGridViewCellStyle1.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            dataGridViewCellStyle1.ForeColor = System.Drawing.SystemColors.WindowText;
-            dataGridViewCellStyle1.SelectionBackColor = System.Drawing.SystemColors.Highlight;
-            dataGridViewCellStyle1.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
-            dataGridViewCellStyle1.WrapMode = System.Windows.Forms.DataGridViewTriState.False;
-            this.dgv_多音字方案.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle1;
+            dataGridViewCellStyle3.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle3.BackColor = System.Drawing.SystemColors.Control;
+            dataGridViewCellStyle3.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            dataGridViewCellStyle3.ForeColor = System.Drawing.SystemColors.WindowText;
+            dataGridViewCellStyle3.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle3.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
+            dataGridViewCellStyle3.WrapMode = System.Windows.Forms.DataGridViewTriState.False;
+            this.dgv_多音字方案.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle3;
             this.dgv_多音字方案.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            dataGridViewCellStyle2.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle2.BackColor = System.Drawing.SystemColors.Window;
-            dataGridViewCellStyle2.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            dataGridViewCellStyle2.ForeColor = System.Drawing.SystemColors.ControlText;
-            dataGridViewCellStyle2.SelectionBackColor = System.Drawing.SystemColors.Highlight;
-            dataGridViewCellStyle2.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
-            dataGridViewCellStyle2.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
-            this.dgv_多音字方案.DefaultCellStyle = dataGridViewCellStyle2;
+            dataGridViewCellStyle4.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle4.BackColor = System.Drawing.SystemColors.Window;
+            dataGridViewCellStyle4.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            dataGridViewCellStyle4.ForeColor = System.Drawing.SystemColors.ControlText;
+            dataGridViewCellStyle4.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle4.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
+            dataGridViewCellStyle4.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
+            this.dgv_多音字方案.DefaultCellStyle = dataGridViewCellStyle4;
             this.dgv_多音字方案.Location = new System.Drawing.Point(8, 20);
             this.dgv_多音字方案.Name = "dgv_多音字方案";
             this.dgv_多音字方案.RowTemplate.Height = 23;
@@ -439,12 +439,12 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.cms_多音字替换方案.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.自动生成ToolStripMenuItem});
             this.cms_多音字替换方案.Name = "cms_多音字替换_多音字替换方案";
-            this.cms_多音字替换方案.Size = new System.Drawing.Size(177, 26);
+            this.cms_多音字替换方案.Size = new System.Drawing.Size(221, 26);
             // 
             // 自动生成ToolStripMenuItem
             // 
             this.自动生成ToolStripMenuItem.Name = "自动生成ToolStripMenuItem";
-            this.自动生成ToolStripMenuItem.Size = new System.Drawing.Size(176, 22);
+            this.自动生成ToolStripMenuItem.Size = new System.Drawing.Size(220, 22);
             this.自动生成ToolStripMenuItem.Text = "自动生成（替换原有内容）";
             this.自动生成ToolStripMenuItem.Click += new System.EventHandler(this.自动生成ToolStripMenuItem_Click);
             // 
