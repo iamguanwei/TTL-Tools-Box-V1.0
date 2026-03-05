@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -149,6 +149,8 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
 
                 _connectionStatus = TtlEngineConnectionStatus.连接成功;
                 _retryCountdown = 连接成功_验证间隔秒数;
+
+                LoadSpeakerSettings(_currentEngineConnector);
 
                 if (_currentEngineConnector.Speakers == null || _currentEngineConnector.Speakers.Length == 0)
                 {

@@ -31,6 +31,16 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
         /// <summary>
         /// 任务生成失败。
         /// </summary>
-        生成失败
+        生成失败,
+
+        /// <summary>
+        /// 正在转换为MP3。
+        /// </summary>
+        转换MP3,
+
+        /// <summary>
+        /// MP3转换失败。
+        /// </summary>
+        转换MP3失败
     }
 }

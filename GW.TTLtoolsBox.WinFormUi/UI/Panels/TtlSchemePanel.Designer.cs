@@ -28,6 +28,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             this.gb_TTL方案_当前方案 = new System.Windows.Forms.GroupBox();
             this.tb_TTL方案_当前方案详情 = new System.Windows.Forms.TextBox();
             this.cb_TTL方案_当前方案名称 = new System.Windows.Forms.ComboBox();
@@ -35,6 +36,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.lab_TTL方案_当前方案名称 = new System.Windows.Forms.Label();
             this.gb_TTL方案_配置 = new System.Windows.Forms.GroupBox();
             this.bt_TTL方案_打开角色声音预览目录 = new System.Windows.Forms.Button();
+            this.bt_TTL方案_清理无效的预览音频 = new System.Windows.Forms.Button();
             this.bt_TTL方案_自动生成全部朗读者预览音频 = new System.Windows.Forms.Button();
             this.bt_TTL方案_重新加载朗读者 = new System.Windows.Forms.Button();
             this.bt_TTL方案_编辑配置 = new System.Windows.Forms.Button();
@@ -45,10 +47,15 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.lab_TTL方案_朗读者参数配置 = new System.Windows.Forms.Label();
             this.lab_TTL方案_连接参数配置 = new System.Windows.Forms.Label();
             this.tb_多音字替换_最终文本 = new System.Windows.Forms.TextBox();
-            this.bt_TTL方案_清理无效的预览音频 = new System.Windows.Forms.Button();
+            this.cmd_TTL方案_朗读者 = new System.Windows.Forms.ContextMenuStrip(this.components);
+            this.设置为默认朗读者DToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.toolStripMenuItem1 = new System.Windows.Forms.ToolStripSeparator();
+            this.添加为角色RToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.重新生成声音预览文件VToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.gb_TTL方案_当前方案.SuspendLayout();
             this.gb_TTL方案_配置.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgv_TTL方案_朗读者参数配置)).BeginInit();
+            this.cmd_TTL方案_朗读者.SuspendLayout();
             this.SuspendLayout();
             // 
             // gb_TTL方案_当前方案
@@ -143,6 +150,17 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.bt_TTL方案_打开角色声音预览目录.UseVisualStyleBackColor = true;
             this.bt_TTL方案_打开角色声音预览目录.Click += new System.EventHandler(this.bt_TTL方案_打开角色声音预览目录_Click);
             // 
+            // bt_TTL方案_清理无效的预览音频
+            // 
+            this.bt_TTL方案_清理无效的预览音频.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.bt_TTL方案_清理无效的预览音频.Location = new System.Drawing.Point(1006, 201);
+            this.bt_TTL方案_清理无效的预览音频.Name = "bt_TTL方案_清理无效的预览音频";
+            this.bt_TTL方案_清理无效的预览音频.Size = new System.Drawing.Size(129, 23);
+            this.bt_TTL方案_清理无效的预览音频.TabIndex = 4;
+            this.bt_TTL方案_清理无效的预览音频.Text = "清理无效的预览音频";
+            this.bt_TTL方案_清理无效的预览音频.UseVisualStyleBackColor = true;
+            this.bt_TTL方案_清理无效的预览音频.Click += new System.EventHandler(this.bt_TTL方案_清理无效的预览音频_Click);
+            // 
             // bt_TTL方案_自动生成全部朗读者预览音频
             // 
             this.bt_TTL方案_自动生成全部朗读者预览音频.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
@@ -207,8 +225,9 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.dgv_TTL方案_朗读者参数配置.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.dgv_TTL方案_朗读者参数配置.EditMode = System.Windows.Forms.DataGridViewEditMode.EditOnEnter;
             this.dgv_TTL方案_朗读者参数配置.Location = new System.Drawing.Point(8, 231);
+            this.dgv_TTL方案_朗读者参数配置.MultiSelect = false;
             this.dgv_TTL方案_朗读者参数配置.Name = "dgv_TTL方案_朗读者参数配置";
-            this.dgv_TTL方案_朗读者参数配置.RowHeadersVisible = false;
+            this.dgv_TTL方案_朗读者参数配置.RowHeadersVisible = true;
             this.dgv_TTL方案_朗读者参数配置.RowTemplate.Height = 23;
             this.dgv_TTL方案_朗读者参数配置.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
             this.dgv_TTL方案_朗读者参数配置.Size = new System.Drawing.Size(1279, 204);
@@ -251,16 +270,41 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.tb_多音字替换_最终文本.TabIndex = 0;
             this.tb_多音字替换_最终文本.Visible = false;
             // 
-            // bt_TTL方案_清理无效的预览音频
+            // cmd_TTL方案_朗读者
             // 
-            this.bt_TTL方案_清理无效的预览音频.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.bt_TTL方案_清理无效的预览音频.Location = new System.Drawing.Point(1006, 201);
-            this.bt_TTL方案_清理无效的预览音频.Name = "bt_TTL方案_清理无效的预览音频";
-            this.bt_TTL方案_清理无效的预览音频.Size = new System.Drawing.Size(129, 23);
-            this.bt_TTL方案_清理无效的预览音频.TabIndex = 4;
-            this.bt_TTL方案_清理无效的预览音频.Text = "清理无效的预览音频";
-            this.bt_TTL方案_清理无效的预览音频.UseVisualStyleBackColor = true;
-            this.bt_TTL方案_清理无效的预览音频.Click += new System.EventHandler(this.bt_TTL方案_清理无效的预览音频_Click);
+            this.cmd_TTL方案_朗读者.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.设置为默认朗读者DToolStripMenuItem,
+            this.添加为角色RToolStripMenuItem,
+            this.toolStripMenuItem1,
+            this.重新生成声音预览文件VToolStripMenuItem});
+            this.cmd_TTL方案_朗读者.Name = "cmd_TTL方案_朗读者";
+            this.cmd_TTL方案_朗读者.Size = new System.Drawing.Size(222, 98);
+            // 
+            // 设置为默认朗读者DToolStripMenuItem
+            // 
+            this.设置为默认朗读者DToolStripMenuItem.Name = "设置为默认朗读者DToolStripMenuItem";
+            this.设置为默认朗读者DToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
+            this.设置为默认朗读者DToolStripMenuItem.Text = "设置为默认朗读者(&D)";
+            this.设置为默认朗读者DToolStripMenuItem.Click += new System.EventHandler(this.设置为默认朗读者DToolStripMenuItem_Click);
+            // 
+            // toolStripMenuItem1
+            // 
+            this.toolStripMenuItem1.Name = "toolStripMenuItem1";
+            this.toolStripMenuItem1.Size = new System.Drawing.Size(218, 6);
+            // 
+            // 添加为角色RToolStripMenuItem
+            // 
+            this.添加为角色RToolStripMenuItem.Name = "添加为角色RToolStripMenuItem";
+            this.添加为角色RToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
+            this.添加为角色RToolStripMenuItem.Text = "添加为角色(&R)";
+            this.添加为角色RToolStripMenuItem.Click += new System.EventHandler(this.添加为角色RToolStripMenuItem_Click);
+            // 
+            // 重新生成声音预览文件VToolStripMenuItem
+            // 
+            this.重新生成声音预览文件VToolStripMenuItem.Name = "重新生成声音预览文件VToolStripMenuItem";
+            this.重新生成声音预览文件VToolStripMenuItem.Size = new System.Drawing.Size(221, 22);
+            this.重新生成声音预览文件VToolStripMenuItem.Text = "重新生成声音预览文件(&V)...";
+            this.重新生成声音预览文件VToolStripMenuItem.Click += new System.EventHandler(this.重新生成声音预览文件VToolStripMenuItem_Click);
             // 
             // TtlSchemePanel
             // 
@@ -276,6 +320,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.gb_TTL方案_配置.ResumeLayout(false);
             this.gb_TTL方案_配置.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgv_TTL方案_朗读者参数配置)).EndInit();
+            this.cmd_TTL方案_朗读者.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -368,5 +413,10 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// </summary>
         private System.Windows.Forms.TextBox tb_多音字替换_最终文本;
         private System.Windows.Forms.Button bt_TTL方案_清理无效的预览音频;
+        private System.Windows.Forms.ContextMenuStrip cmd_TTL方案_朗读者;
+        private System.Windows.Forms.ToolStripMenuItem 设置为默认朗读者DToolStripMenuItem;
+        private System.Windows.Forms.ToolStripSeparator toolStripMenuItem1;
+        private System.Windows.Forms.ToolStripMenuItem 添加为角色RToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem 重新生成声音预览文件VToolStripMenuItem;
     }
 }

@@ -13,12 +13,7 @@ namespace GW.TTLtoolsBox.WinFormUi.Helper
         /// <summary>
         /// 拆分文本时使用的整句分隔符号。
         /// </summary>
-        public const string 整句_分割符号 = "！!？?。：\"\"\"…；;";
-
-        /// <summary>
-        /// 拆分文本时使用的半句分隔符号。
-        /// </summary>
-        public const string 半句_分割符号 = "，";
+        public const string 整句_分割符号 = "！!？?。：\"\"\"…;;";
 
         /// <summary>
         /// 拆分文本时最小的文本长度。

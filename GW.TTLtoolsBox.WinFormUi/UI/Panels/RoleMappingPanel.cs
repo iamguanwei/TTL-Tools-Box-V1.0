@@ -171,6 +171,21 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         }
 
         /// <summary>
+        /// 刷新备注列宽度。
+        /// </summary>
+        public void RefreshRemarkColumnWidth()
+        {
+            if (this.dgv_角色映射 != null && this.dgv_角色映射.IsHandleCreated)
+            {
+                var remarkColumn = this.dgv_角色映射.Columns["Remark"];
+                if (remarkColumn != null)
+                {
+                    this.dgv_角色映射.AutoResizeColumn(remarkColumn.Index, DataGridViewAutoSizeColumnMode.AllCells);
+                }
+            }
+        }
+
+        /// <summary>
         /// 获取所有角色名称列表。
         /// </summary>
         /// <returns>角色名称列表。</returns>
@@ -188,6 +203,22 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 }
             }
             return roleNames;
+        }
+
+        /// <summary>
+        /// 添加角色映射项。
+        /// </summary>
+        /// <param name="sourceName">源名称。</param>
+        public void AddRoleMapping(string sourceName)
+        {
+            var newItem = new RoleMappingItem
+            {
+                RoleName = string.Empty,
+                SourceName = sourceName
+            };
+            _roleMappingItems.Add(newItem);
+            refresh角色映射SourceNameOptions();
+            OnProjectModified();
         }
 
         #endregion
@@ -337,6 +368,14 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             sourceNameColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
             sourceNameColumn.FlatStyle = FlatStyle.Flat;
             this.dgv_角色映射.Columns.Add(sourceNameColumn);
+
+            DataGridViewTextBoxColumn remarkColumn = new DataGridViewTextBoxColumn();
+            remarkColumn.Name = "Remark";
+            remarkColumn.HeaderText = "备注";
+            remarkColumn.MinimumWidth = 150;
+            remarkColumn.ReadOnly = true;
+            remarkColumn.AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+            this.dgv_角色映射.Columns.Add(remarkColumn);
 
             DataGridViewButtonColumn voicePreviewColumn = new DataGridViewButtonColumn();
             voicePreviewColumn.Name = "VoicePreview";
@@ -568,6 +607,37 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// <param name="e">事件参数。</param>
         private void dgv_角色映射_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
         {
+            var remarkColumn = this.dgv_角色映射.Columns["Remark"];
+            if (remarkColumn != null && e.ColumnIndex == remarkColumn.Index && e.RowIndex >= 0)
+            {
+                if (e.RowIndex < _roleMappingItems.Count)
+                {
+                    var item = _roleMappingItems[e.RowIndex];
+                    string sourceName = item.SourceName;
+                    if (sourceName.EndsWith(已丢失_标识后缀))
+                    {
+                        sourceName = sourceName.Substring(0, sourceName.Length - 已丢失_标识后缀.Length);
+                    }
+
+                    string remark = string.Empty;
+                    if (!string.IsNullOrWhiteSpace(sourceName))
+                    {
+                        var currentEngine = TtlSchemeController?.CurrentEngineConnector;
+                        if (currentEngine?.Speakers != null)
+                        {
+                            var speaker = currentEngine.Speakers.FirstOrDefault(s => s.SourceName == sourceName);
+                            if (speaker != null)
+                            {
+                                remark = speaker.Remark ?? string.Empty;
+                            }
+                        }
+                    }
+                    e.Value = remark;
+                    e.FormattingApplied = true;
+                }
+                return;
+            }
+
             var voicePreviewColumn = this.dgv_角色映射.Columns["VoicePreview"];
             if (voicePreviewColumn != null && e.ColumnIndex == voicePreviewColumn.Index && e.RowIndex >= 0)
             {
@@ -642,6 +712,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 {
                     this.dgv_角色映射.CommitEdit(DataGridViewDataErrorContexts.Commit);
                     this.dgv_角色映射.InvalidateRow(this.dgv_角色映射.CurrentCell.RowIndex);
+                    RefreshRemarkColumnWidth();
                 }
             }
         }

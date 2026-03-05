@@ -135,48 +135,6 @@ namespace GW.TTLtoolsBox.Core.FileAccesser
         }
 
         /// <summary>
-        /// 获取文本拆分的拆分长度。
-        /// </summary>
-        /// <param name="engineId">TTL引擎ID</param>
-        /// <param name="defaultValue">默认值</param>
-        /// <returns>拆分长度</returns>
-        public int GetTextSplit_SplitLength(string engineId, int defaultValue = 100)
-        {
-            if (string.IsNullOrEmpty(engineId))
-            {
-                return defaultValue;
-            }
-
-            if (_projectData.EngineDataDic.TryGetValue(engineId, out EngineProjectData engineData))
-            {
-                return engineData.TextSplit_SplitLength > 0 ? engineData.TextSplit_SplitLength : defaultValue;
-            }
-
-            return defaultValue;
-        }
-
-        /// <summary>
-        /// 设置文本拆分的拆分长度。
-        /// </summary>
-        /// <param name="engineId">TTL引擎ID</param>
-        /// <param name="value">拆分长度</param>
-        public void SetTextSplit_SplitLength(string engineId, int value)
-        {
-            if (string.IsNullOrEmpty(engineId))
-            {
-                return;
-            }
-
-            EnsureEngineData(engineId);
-            _projectData.EngineDataDic[engineId].TextSplit_SplitLength = value;
-
-            if (IsAutoSave)
-            {
-                Save();
-            }
-        }
-
-        /// <summary>
         /// 获取多音字替换的最终文本。
         /// </summary>
         /// <param name="engineId">TTL引擎ID</param>
@@ -379,6 +337,252 @@ namespace GW.TTLtoolsBox.Core.FileAccesser
             }
 
             return new List<RoleMappingItem>();
+        }
+
+        /// <summary>
+        /// 获取语音生成预处理的默认朗读者名称。
+        /// </summary>
+        /// <param name="engineId">TTL引擎ID</param>
+        /// <returns>默认朗读者名称</returns>
+        public string GetVoicePreprocess_DefaultSpeaker(string engineId)
+        {
+            if (string.IsNullOrEmpty(engineId))
+            {
+                return string.Empty;
+            }
+
+            if (_projectData.EngineDataDic.TryGetValue(engineId, out EngineProjectData engineData))
+            {
+                return engineData.VoicePreprocess_DefaultSpeaker;
+            }
+
+            return string.Empty;
+        }
+
+        /// <summary>
+        /// 设置语音生成预处理的默认朗读者名称。
+        /// </summary>
+        /// <param name="engineId">TTL引擎ID</param>
+        /// <param name="speakerName">默认朗读者名称</param>
+        public void SetVoicePreprocess_DefaultSpeaker(string engineId, string speakerName)
+        {
+            if (string.IsNullOrEmpty(engineId))
+            {
+                return;
+            }
+
+            EnsureEngineData(engineId);
+            _projectData.EngineDataDic[engineId].VoicePreprocess_DefaultSpeaker = speakerName ?? string.Empty;
+
+            if (IsAutoSave)
+            {
+                Save();
+            }
+        }
+
+        /// <summary>
+        /// 获取语音生成预处理的全局语速值。
+        /// </summary>
+        /// <param name="engineId">TTL引擎ID</param>
+        /// <returns>全局语速值</returns>
+        public int GetVoicePreprocess_GlobalSpeed(string engineId)
+        {
+            if (string.IsNullOrEmpty(engineId))
+            {
+                return 100;
+            }
+
+            if (_projectData.EngineDataDic.TryGetValue(engineId, out EngineProjectData engineData))
+            {
+                return engineData.VoicePreprocess_GlobalSpeed == 0 ? 100 : engineData.VoicePreprocess_GlobalSpeed;
+            }
+
+            return 100;
+        }
+
+        /// <summary>
+        /// 设置语音生成预处理的全局语速值。
+        /// </summary>
+        /// <param name="engineId">TTL引擎ID</param>
+        /// <param name="speed">全局语速值</param>
+        public void SetVoicePreprocess_GlobalSpeed(string engineId, int speed)
+        {
+            if (string.IsNullOrEmpty(engineId))
+            {
+                return;
+            }
+
+            EnsureEngineData(engineId);
+            _projectData.EngineDataDic[engineId].VoicePreprocess_GlobalSpeed = speed;
+
+            if (IsAutoSave)
+            {
+                Save();
+            }
+        }
+
+        /// <summary>
+        /// 获取语音生成预处理是否启用全局语速。
+        /// </summary>
+        /// <param name="engineId">TTL引擎ID</param>
+        /// <returns>是否启用全局语速</returns>
+        public bool GetVoicePreprocess_UseGlobalSpeed(string engineId)
+        {
+            if (string.IsNullOrEmpty(engineId))
+            {
+                return false;
+            }
+
+            if (_projectData.EngineDataDic.TryGetValue(engineId, out EngineProjectData engineData))
+            {
+                return engineData.VoicePreprocess_UseGlobalSpeed;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// 设置语音生成预处理是否启用全局语速。
+        /// </summary>
+        /// <param name="engineId">TTL引擎ID</param>
+        /// <param name="useGlobalSpeed">是否启用全局语速</param>
+        public void SetVoicePreprocess_UseGlobalSpeed(string engineId, bool useGlobalSpeed)
+        {
+            if (string.IsNullOrEmpty(engineId))
+            {
+                return;
+            }
+
+            EnsureEngineData(engineId);
+            _projectData.EngineDataDic[engineId].VoicePreprocess_UseGlobalSpeed = useGlobalSpeed;
+
+            if (IsAutoSave)
+            {
+                Save();
+            }
+        }
+
+        /// <summary>
+        /// 获取语音生成预处理的全局音量值。
+        /// </summary>
+        /// <param name="engineId">TTL引擎ID</param>
+        /// <returns>全局音量值</returns>
+        public int GetVoicePreprocess_GlobalVolume(string engineId)
+        {
+            if (string.IsNullOrEmpty(engineId))
+            {
+                return 100;
+            }
+
+            if (_projectData.EngineDataDic.TryGetValue(engineId, out EngineProjectData engineData))
+            {
+                return engineData.VoicePreprocess_GlobalVolume == 0 ? 100 : engineData.VoicePreprocess_GlobalVolume;
+            }
+
+            return 100;
+        }
+
+        /// <summary>
+        /// 设置语音生成预处理的全局音量值。
+        /// </summary>
+        /// <param name="engineId">TTL引擎ID</param>
+        /// <param name="volume">全局音量值</param>
+        public void SetVoicePreprocess_GlobalVolume(string engineId, int volume)
+        {
+            if (string.IsNullOrEmpty(engineId))
+            {
+                return;
+            }
+
+            EnsureEngineData(engineId);
+            _projectData.EngineDataDic[engineId].VoicePreprocess_GlobalVolume = volume;
+
+            if (IsAutoSave)
+            {
+                Save();
+            }
+        }
+
+        /// <summary>
+        /// 获取语音生成预处理是否启用全局音量。
+        /// </summary>
+        /// <param name="engineId">TTL引擎ID</param>
+        /// <returns>是否启用全局音量</returns>
+        public bool GetVoicePreprocess_UseGlobalVolume(string engineId)
+        {
+            if (string.IsNullOrEmpty(engineId))
+            {
+                return false;
+            }
+
+            if (_projectData.EngineDataDic.TryGetValue(engineId, out EngineProjectData engineData))
+            {
+                return engineData.VoicePreprocess_UseGlobalVolume;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// 设置语音生成预处理是否启用全局音量。
+        /// </summary>
+        /// <param name="engineId">TTL引擎ID</param>
+        /// <param name="useGlobalVolume">是否启用全局音量</param>
+        public void SetVoicePreprocess_UseGlobalVolume(string engineId, bool useGlobalVolume)
+        {
+            if (string.IsNullOrEmpty(engineId))
+            {
+                return;
+            }
+
+            EnsureEngineData(engineId);
+            _projectData.EngineDataDic[engineId].VoicePreprocess_UseGlobalVolume = useGlobalVolume;
+
+            if (IsAutoSave)
+            {
+                Save();
+            }
+        }
+
+        /// <summary>
+        /// 获取语音生成预处理的段间空白时长。
+        /// </summary>
+        /// <param name="engineId">TTL引擎ID</param>
+        /// <returns>段间空白时长（秒）</returns>
+        public decimal GetVoicePreprocess_BlankDuration(string engineId)
+        {
+            if (string.IsNullOrEmpty(engineId))
+            {
+                return 1;
+            }
+
+            if (_projectData.EngineDataDic.TryGetValue(engineId, out EngineProjectData engineData))
+            {
+                return engineData.VoicePreprocess_BlankDuration == 0 ? 1 : engineData.VoicePreprocess_BlankDuration;
+            }
+
+            return 1;
+        }
+
+        /// <summary>
+        /// 设置语音生成预处理的段间空白时长。
+        /// </summary>
+        /// <param name="engineId">TTL引擎ID</param>
+        /// <param name="blankDuration">段间空白时长（秒）</param>
+        public void SetVoicePreprocess_BlankDuration(string engineId, decimal blankDuration)
+        {
+            if (string.IsNullOrEmpty(engineId))
+            {
+                return;
+            }
+
+            EnsureEngineData(engineId);
+            _projectData.EngineDataDic[engineId].VoicePreprocess_BlankDuration = blankDuration;
+
+            if (IsAutoSave)
+            {
+                Save();
+            }
         }
 
         /// <summary>

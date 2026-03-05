@@ -18,8 +18,7 @@ namespace GW.TTLtoolsBox.Core.TextSplit
         /// <param name="originalText">原始文本</param>
         /// <param name="minLength">拆分后段落最短长度（含分隔符）</param>
         /// <param name="maxLength">拆分后段落最长长度（含分隔符）</param>
-        /// <param name="mainSeparators">主拆分分隔符数组（优先级高）</param>
-        /// <param name="subSeparators">次拆分分隔符数组（兜底）</param>
+        /// <param name="mainSeparators">拆分分隔符数组</param>
         /// <param name="trimSegments">是否移除拆分后段落的首尾空白符（默认false）</param>
         /// <returns>拆分后的文本（段落间用\r\n分隔）</returns>
         /// <exception cref="ArgumentException">参数不合法时抛出</exception>
@@ -28,34 +27,33 @@ namespace GW.TTLtoolsBox.Core.TextSplit
             int minLength,
             int maxLength,
             char[] mainSeparators,
-            char[] subSeparators,
             bool trimSegments = false)
         {
-            // 1. 参数校验（避免非法参数导致异常）
             if (string.IsNullOrEmpty(originalText)) return string.Empty;
             if (minLength <= 0) throw new ArgumentException("最短长度必须大于0", nameof(minLength));
             if (maxLength < minLength) throw new ArgumentException("最长长度不能小于最短长度", nameof(maxLength));
-            mainSeparators = mainSeparators ?? Array.Empty<char>(); // 空值兜底
-            subSeparators = subSeparators ?? Array.Empty<char>(); // 空值兜底
+            mainSeparators = mainSeparators ?? Array.Empty<char>();
 
-            // 2. 兼容多换行符格式（\r\n、\n、\r），统一拆分为文本块
             string[] _textBlocks = originalText.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
             List<string> _resultBlocks = new List<string>();
 
-            // 3. 逐个处理每个文本块
+            HashSet<char> _mainSepSet = new HashSet<char>(mainSeparators);
+
             foreach (string block in _textBlocks)
             {
                 if (string.IsNullOrEmpty(block))
                 {
-                    _resultBlocks.Add(block); // 保留空行
+                    _resultBlocks.Add(block);
                     continue;
                 }
 
-                List<string> splitBlockResult = processSingleBlock(block, minLength, maxLength, mainSeparators, subSeparators, trimSegments);
+                List<string> splitBlockResult = processSingleBlock(block, minLength, maxLength, mainSeparators, trimSegments);
+
+                if (_mainSepSet.Count > 0) mergeSeparatorOnlySegments(splitBlockResult, _mainSepSet);
+
                 _resultBlocks.AddRange(splitBlockResult);
             }
 
-            // 4. 拼接所有结果（恢复换行）
             return string.Join("\r\n", _resultBlocks);
         }
 
@@ -79,11 +77,14 @@ namespace GW.TTLtoolsBox.Core.TextSplit
 
             // 3. 构建分隔符映射（开始分隔符到结束分隔符的映射）
             Dictionary<char, char> _separatorMap = new Dictionary<char, char>();
+            HashSet<char> _allSeparators = new HashSet<char>(); // 所有对话分隔符集合
             for (int i = 0; i < mainSeparators.Length; i += 2)
             {
                 if (i + 1 < mainSeparators.Length)
                 {
                     _separatorMap[mainSeparators[i]] = mainSeparators[i + 1];
+                    _allSeparators.Add(mainSeparators[i]);
+                    _allSeparators.Add(mainSeparators[i + 1]);
                 }
             }
 
@@ -97,11 +98,104 @@ namespace GW.TTLtoolsBox.Core.TextSplit
                 }
 
                 List<string> splitBlockResult = processDialogBlock(block, _separatorMap, trimSegments);
+
+                // 合并仅包含分隔符的段落
+                if (_allSeparators.Count > 0) mergeSeparatorOnlySegments(splitBlockResult, _allSeparators);
+
                 _resultBlocks.AddRange(splitBlockResult);
             }
 
             // 5. 拼接所有结果（恢复换行）
             return string.Join("\r\n", _resultBlocks);
+        }
+
+        /// <summary>
+        /// 按句子拆分文本（忽略换行符模式）。
+        /// </summary>
+        /// <param name="originalText">原始文本。</param>
+        /// <param name="minLength">拆分后段落最短长度（含分隔符）。</param>
+        /// <param name="maxLength">拆分后段落最长长度（含分隔符）。</param>
+        /// <param name="mainSeparators">拆分分隔符数组。</param>
+        /// <param name="trimSegments">是否移除拆分后段落的首尾空白符（默认false）。</param>
+        /// <returns>拆分后的文本（段落间用\r\n分隔）。</returns>
+        /// <remarks>
+        /// 拆分规则：
+        /// - 先按空行拆分原始文本
+        /// - 每段内剔除换行符
+        /// - 再调用原有的按句子拆分逻辑
+        /// - 连续空行会产生空行段落：空行段落数 = max(0, 空行数 - 1)
+        /// </remarks>
+        public static string SplitTextIgnoreLineBreaks(
+            string originalText,
+            int minLength,
+            int maxLength,
+            char[] mainSeparators,
+            bool trimSegments = false)
+        {
+            if (string.IsNullOrEmpty(originalText)) return string.Empty;
+
+            string[] _lines = originalText.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
+            List<string> _paragraphs = new List<string>();
+            StringBuilder _currentParagraph = new StringBuilder();
+            int _emptyLineCount = 0;
+
+            foreach (string _line in _lines)
+            {
+                if (string.IsNullOrWhiteSpace(_line))
+                {
+                    _emptyLineCount++;
+                }
+                else
+                {
+                    if (_emptyLineCount > 0)
+                    {
+                        if (_currentParagraph.Length > 0)
+                        {
+                            string _paragraph = trimSegments ? _currentParagraph.ToString().Trim() : _currentParagraph.ToString();
+                            _paragraphs.Add(_paragraph);
+                            _currentParagraph.Clear();
+                        }
+                        for (int i = 0; i < _emptyLineCount - 1; i++)
+                        {
+                            _paragraphs.Add(string.Empty);
+                        }
+                    }
+                    _emptyLineCount = 0;
+                    if (_currentParagraph.Length > 0)
+                    {
+                        _currentParagraph.Append(" ");
+                    }
+                    _currentParagraph.Append(_line);
+                }
+            }
+
+            if (_emptyLineCount > 0)
+            {
+                if (_currentParagraph.Length > 0)
+                {
+                    string _paragraph = trimSegments ? _currentParagraph.ToString().Trim() : _currentParagraph.ToString();
+                    _paragraphs.Add(_paragraph);
+                    _currentParagraph.Clear();
+                }
+                for (int i = 0; i < _emptyLineCount - 1; i++)
+                {
+                    _paragraphs.Add(string.Empty);
+                }
+            }
+            else if (_currentParagraph.Length > 0)
+            {
+                string _lastParagraph = trimSegments ? _currentParagraph.ToString().Trim() : _currentParagraph.ToString();
+                _paragraphs.Add(_lastParagraph);
+            }
+
+            List<string> _resultParagraphs = new List<string>();
+            foreach (string _paragraph in _paragraphs)
+            {
+                string _splitResult = SplitText(_paragraph, minLength, maxLength, mainSeparators, trimSegments);
+                _resultParagraphs.Add(_splitResult);
+            }
+
+            return string.Join("\r\n", _resultParagraphs);
         }
 
         /// <summary>
@@ -162,9 +256,111 @@ namespace GW.TTLtoolsBox.Core.TextSplit
             return string.Join("\r\n", _paragraphs);
         }
 
+        /// <summary>
+        /// 预处理文本，为按句子拆分做准备。
+        /// </summary>
+        /// <param name="originalText">原始文本。</param>
+        /// <param name="ignoreLineBreaks">是否忽略换行符（启用空行+1处理）。</param>
+        /// <returns>预处理后的文本。</returns>
+        /// <remarks>
+        /// 处理规则：
+        /// 1. 去除每一行的前导和后续空格
+        /// 2. 若ignoreLineBreaks为true，对连续空行进行+1处理：
+        ///    - 连续N个空行会被转换为N+1个空行
+        /// </remarks>
+        public static string PreprocessText(string originalText, bool ignoreLineBreaks)
+        {
+            if (string.IsNullOrEmpty(originalText)) return string.Empty;
+
+            string[] _lines = originalText.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
+
+            for (int i = 0; i < _lines.Length; i++)
+            {
+                _lines[i] = _lines[i].Trim();
+            }
+
+            if (ignoreLineBreaks)
+            {
+                List<string> _resultLines = new List<string>();
+                int _emptyLineCount = 0;
+
+                foreach (string _line in _lines)
+                {
+                    if (string.IsNullOrEmpty(_line))
+                    {
+                        _emptyLineCount++;
+                    }
+                    else
+                    {
+                        if (_emptyLineCount > 0)
+                        {
+                            for (int i = 0; i < _emptyLineCount + 1; i++)
+                            {
+                                _resultLines.Add(string.Empty);
+                            }
+                            _emptyLineCount = 0;
+                        }
+                        _resultLines.Add(_line);
+                    }
+                }
+
+                if (_emptyLineCount > 0)
+                {
+                    for (int i = 0; i < _emptyLineCount + 1; i++)
+                    {
+                        _resultLines.Add(string.Empty);
+                    }
+                }
+
+                return string.Join("\r\n", _resultLines);
+            }
+
+            return string.Join("\r\n", _lines);
+        }
+
         #endregion
 
         #region private
+
+        /// <summary>
+        /// 合并仅包含分隔符的段落
+        /// </summary>
+        /// <param name="segments">拆分后的段落列表</param>
+        /// <param name="separators">分隔符集合</param>
+        /// <remarks>
+        /// 如果某一段只包含指定分隔符，则将其与上一段合并；如果没有上一段则舍弃。
+        /// </remarks>
+        private static void mergeSeparatorOnlySegments(List<string> segments, HashSet<char> separators)
+        {
+            for (int i = segments.Count - 1; i >= 0; i--)
+            {
+                string segment = segments[i];
+                if (string.IsNullOrEmpty(segment)) continue;
+
+                bool isOnlySeparators = true;
+                foreach (char c in segment)
+                {
+                    if (!separators.Contains(c))
+                    {
+                        isOnlySeparators = false;
+                        break;
+                    }
+                }
+
+                if (isOnlySeparators)
+                {
+                    if (i > 0)
+                    {
+                        segments[i - 1] += segment;
+                        segments.RemoveAt(i);
+                    }
+                    else
+                    {
+                        segments.RemoveAt(i);
+                    }
+                }
+            }
+        }
 
         /// <summary>
         /// 处理单个对话文本块（无换行的纯文本）
@@ -260,42 +456,28 @@ namespace GW.TTLtoolsBox.Core.TextSplit
             int minLength,
             int maxLength,
             char[] mainSeparators,
-            char[] subSeparators,
             bool trimSegments)
         {
             List<string> _splitResult = new List<string>();
             int _currentPos = 0;
             int _totalLength = block.Length;
 
-            // 构建分隔符集合（提升查找效率）
             HashSet<char> _mainSepSet = new HashSet<char>(mainSeparators);
-            HashSet<char> _subSepSet = new HashSet<char>(subSeparators);
 
-            // 核心规则1：无任何分隔符 → 原样返回，不拆分、不截断
-            if (!block.Any(c => _mainSepSet.Contains(c) || _subSepSet.Contains(c)))
+            if (!block.Any(c => _mainSepSet.Contains(c)))
             {
                 string segment = trimSegments ? block.Trim() : block;
                 _splitResult.Add(segment);
                 return _splitResult;
             }
 
-            // 有分隔符时，循环拆分（确保每段≤maxLength，且只按分隔符拆分）
             while (_currentPos < _totalLength)
             {
-                // 计算当前可拆分的最大结束位置（确保段落总长度≤maxLength）
                 int _maxEndPos = _currentPos + maxLength - 1;
                 _maxEndPos = Math.Min(_maxEndPos, _totalLength - 1);
 
-                // 步骤1：在[currentPos, maxEndPos]范围内找最后一个主分隔符
                 int _splitPos = findLastSeparatorInRange(block, _currentPos, _maxEndPos, _mainSepSet);
 
-                // 步骤2：没找到主分隔符 → 找最后一个次分隔符
-                if (_splitPos == -1)
-                {
-                    _splitPos = findLastSeparatorInRange(block, _currentPos, _maxEndPos, _subSepSet);
-                }
-
-                // 步骤3：找到分隔符 → 拆分
                 if (_splitPos != -1)
                 {
                     string _segment = block.Substring(_currentPos, _splitPos - _currentPos + 1);
@@ -304,19 +486,16 @@ namespace GW.TTLtoolsBox.Core.TextSplit
                 }
                 else
                 {
-                    // 步骤4：当前范围无分隔符 → 向后找第一个分隔符（确保不截断文本）
-                    int _nextSepPos = findFirstSeparatorAfterPos(block, _maxEndPos + 1, _mainSepSet, _subSepSet);
+                    int _nextSepPos = findFirstSeparatorAfterPos(block, _maxEndPos + 1, _mainSepSet);
 
                     if (_nextSepPos != -1)
                     {
-                        // 按找到的分隔符拆分（即使这段略超maxLength，也不截断）
                         string _segment = block.Substring(_currentPos, _nextSepPos - _currentPos + 1);
                         _splitResult.Add(trimSegments ? _segment.Trim() : _segment);
                         _currentPos = _nextSepPos + 1;
                     }
                     else
                     {
-                        // 兜底：理论上不会走到这里（已校验有分隔符）
                         string _segment = block.Substring(_currentPos);
                         _splitResult.Add(trimSegments ? _segment.Trim() : _segment);
                         _currentPos = _totalLength;
@@ -343,19 +522,13 @@ namespace GW.TTLtoolsBox.Core.TextSplit
         }
 
         /// <summary>
-        /// 从指定位置往后找第一个分隔符（先主后次）
+        /// 从指定位置往后找第一个分隔符
         /// </summary>
-        private static int findFirstSeparatorAfterPos(string text, int startPos, HashSet<char> mainSep, HashSet<char> subSep)
+        private static int findFirstSeparatorAfterPos(string text, int startPos, HashSet<char> mainSep)
         {
-            // 先找主分隔符
             for (int i = startPos; i < text.Length; i++)
             {
                 if (mainSep.Contains(text[i])) return i;
-            }
-            // 再找次分隔符
-            for (int i = startPos; i < text.Length; i++)
-            {
-                if (subSep.Contains(text[i])) return i;
             }
             return -1;
         }

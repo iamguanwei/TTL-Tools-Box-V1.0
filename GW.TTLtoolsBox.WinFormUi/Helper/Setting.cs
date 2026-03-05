@@ -1,4 +1,9 @@
 using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Runtime.Serialization.Json;
+using System.Text;
+using GW.TTLtoolsBox.Core.Entity;
 using GW.TTLtoolsBox.Core.FileAccesser;
 
 namespace GW.TTLtoolsBox.WinFormUi.Helper
@@ -119,6 +124,150 @@ namespace GW.TTLtoolsBox.WinFormUi.Helper
         public static void Clear()
         {
             getIniFileHelper().Clear();
+        }
+
+        /// <summary>
+        /// 保存语音生成任务列表到配置文件。
+        /// </summary>
+        /// <param name="engineId">TTL引擎ID。</param>
+        /// <param name="tasks">任务列表。</param>
+        public static void SaveVoiceGenerationTasks(string engineId, List<VoiceGenerationTask> tasks)
+        {
+            if (string.IsNullOrEmpty(engineId))
+            {
+                return;
+            }
+
+            try
+            {
+                string key = $"VoiceGenerationTasks_{engineId}";
+                if (tasks == null || tasks.Count == 0)
+                {
+                    Remove(key);
+                    return;
+                }
+
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(List<VoiceGenerationTask>));
+                    serializer.WriteObject(ms, tasks);
+                    string json = Encoding.UTF8.GetString(ms.ToArray());
+                    SetValue(key, json);
+                }
+
+                if (IsAutoSave)
+                {
+                    Save();
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        /// <summary>
+        /// 从配置文件加载语音生成任务列表。
+        /// </summary>
+        /// <param name="engineId">TTL引擎ID。</param>
+        /// <returns>任务列表。</returns>
+        public static List<VoiceGenerationTask> LoadVoiceGenerationTasks(string engineId)
+        {
+            if (string.IsNullOrEmpty(engineId))
+            {
+                return new List<VoiceGenerationTask>();
+            }
+
+            try
+            {
+                string key = $"VoiceGenerationTasks_{engineId}";
+                string json = GetValue(key, string.Empty);
+
+                if (string.IsNullOrWhiteSpace(json))
+                {
+                    return new List<VoiceGenerationTask>();
+                }
+
+                using (MemoryStream ms = new MemoryStream(Encoding.UTF8.GetBytes(json)))
+                {
+                    DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(List<VoiceGenerationTask>));
+                    List<VoiceGenerationTask> tasks = serializer.ReadObject(ms) as List<VoiceGenerationTask>;
+                    return tasks ?? new List<VoiceGenerationTask>();
+                }
+            }
+            catch
+            {
+                return new List<VoiceGenerationTask>();
+            }
+        }
+
+        /// <summary>
+        /// 获取文本拆分的拆分长度。
+        /// </summary>
+        /// <param name="engineId">TTL引擎ID。</param>
+        /// <param name="defaultValue">默认值。</param>
+        /// <returns>拆分长度。</returns>
+        public static int GetTextSplit_SplitLength(string engineId, int defaultValue = 100)
+        {
+            if (string.IsNullOrEmpty(engineId))
+            {
+                return defaultValue;
+            }
+
+            string key = $"TextSplit_SplitLength_{engineId}";
+            string value = GetValue(key, defaultValue.ToString());
+            return int.TryParse(value, out int result) ? result : defaultValue;
+        }
+
+        /// <summary>
+        /// 设置文本拆分的拆分长度。
+        /// </summary>
+        /// <param name="engineId">TTL引擎ID。</param>
+        /// <param name="value">拆分长度。</param>
+        public static void SetTextSplit_SplitLength(string engineId, int value)
+        {
+            if (string.IsNullOrEmpty(engineId))
+            {
+                return;
+            }
+
+            string key = $"TextSplit_SplitLength_{engineId}";
+            SetValue(key, value);
+            Save();
+        }
+
+        /// <summary>
+        /// 获取文本拆分的忽略换行符设置。
+        /// </summary>
+        /// <param name="engineId">TTL引擎ID。</param>
+        /// <param name="defaultValue">默认值。</param>
+        /// <returns>是否忽略换行符。</returns>
+        public static bool GetTextSplit_IgnoreLineBreaks(string engineId, bool defaultValue = true)
+        {
+            if (string.IsNullOrEmpty(engineId))
+            {
+                return defaultValue;
+            }
+
+            string key = $"TextSplit_IgnoreLineBreaks_{engineId}";
+            string value = GetValue(key, defaultValue.ToString());
+            return bool.TryParse(value, out bool result) ? result : defaultValue;
+        }
+
+        /// <summary>
+        /// 设置文本拆分的忽略换行符设置。
+        /// </summary>
+        /// <param name="engineId">TTL引擎ID。</param>
+        /// <param name="value">是否忽略换行符。</param>
+        public static void SetTextSplit_IgnoreLineBreaks(string engineId, bool value)
+        {
+            if (string.IsNullOrEmpty(engineId))
+            {
+                return;
+            }
+
+            string key = $"TextSplit_IgnoreLineBreaks_{engineId}";
+            SetValue(key, value);
+            Save();
         }
 
         #endregion

@@ -93,6 +93,11 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
         public Func<bool> GetKeepTempFiles { get; set; }
 
         /// <summary>
+        /// 获取或设置获取最新临时文件夹路径的委托。
+        /// </summary>
+        public Func<string> GetTempFolder { get; set; }
+
+        /// <summary>
         /// 获取或设置临时文件夹路径。
         /// </summary>
         public string TempFolder
@@ -190,11 +195,27 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
         /// </summary>
         public void Start()
         {
+            checkAndUpdateTempFolder();
             lock (_lock)
             {
                 if (_isRunning) return;
             }
             ProcessNextTask();
+        }
+
+        /// <summary>
+        /// 检查并更新临时文件夹路径。
+        /// </summary>
+        private void checkAndUpdateTempFolder()
+        {
+            if (GetTempFolder != null)
+            {
+                string latestTempFolder = GetTempFolder();
+                if (!string.IsNullOrEmpty(latestTempFolder) && latestTempFolder != _tempFolder)
+                {
+                    _tempFolder = latestTempFolder;
+                }
+            }
         }
 
         /// <summary>
@@ -276,6 +297,17 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
                     ProcessNextTask();
                 }
             }
+        }
+
+        /// <summary>
+        /// 检查是否存在正在执行或排队中的任务（包括转换MP3）。
+        /// </summary>
+        /// <returns>如果存在活跃任务返回true，否则返回false。</returns>
+        public bool HasActiveTasks()
+        {
+            return _tasks.Any(t => t.Status == VoiceGenerationTaskStatus.排队中 ||
+                                  t.Status == VoiceGenerationTaskStatus.正在生成 ||
+                                  t.Status == VoiceGenerationTaskStatus.转换MP3);
         }
 
         #endregion
@@ -591,7 +623,7 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
                         task.ProgressDetail = "正在合并音频...";
                         OnTaskProgressUpdated(task, task.Progress, task.ProgressDetail);
 
-                        var mergedFile = await MergeAudioFilesAsync(cloneItemArray, task.SpaceTime, task.SaveFile);
+                        var mergedFile = await MergeAudioFilesAsync(cloneItemArray, task.SpaceTime, task.Id);
                         tempFilesToCleanup.Add(mergedFile);
                         finishedFile = mergedFile;
 
@@ -605,7 +637,7 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
                             task.ProgressDetail = "正在调整音频速度...";
                             OnTaskProgressUpdated(task, task.Progress, task.ProgressDetail);
 
-                            finishedFile = await AdjustAudioSpeedAsync(finishedFile, task.Speed);
+                            finishedFile = await AdjustAudioSpeedAsync(finishedFile, task.Speed, task.Id);
                             tempFilesToCleanup.Add(finishedFile);
 
                             if (_shouldStop) return;
@@ -619,7 +651,7 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
                             task.ProgressDetail = "正在调整音频音量...";
                             OnTaskProgressUpdated(task, task.Progress, task.ProgressDetail);
 
-                            finishedFile = await AdjustAudioVolumeAsync(finishedFile, task.Volume);
+                            finishedFile = await AdjustAudioVolumeAsync(finishedFile, task.Volume, task.Id);
                             tempFilesToCleanup.Add(finishedFile);
 
                             if (_shouldStop) return;
@@ -747,25 +779,25 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
         /// <summary>
         /// 合并多个音频文件。
         /// </summary>
-        protected virtual async Task<string> MergeAudioFilesAsync(VoiceGenerationTaskItem[] taskItems, float spaceTime, string outputFile)
+        protected virtual async Task<string> MergeAudioFilesAsync(VoiceGenerationTaskItem[] taskItems, float spaceTime, string taskId)
         {
-            return await Task.Run(() => MergeAudioFiles(taskItems, spaceTime, outputFile));
+            return await Task.Run(() => MergeAudioFiles(taskItems, spaceTime, taskId));
         }
 
         /// <summary>
         /// 调整音频速度。
         /// </summary>
-        protected virtual async Task<string> AdjustAudioSpeedAsync(string inputFile, int speed)
+        protected virtual async Task<string> AdjustAudioSpeedAsync(string inputFile, int speed, string taskId)
         {
-            return await Task.Run(() => AdjustAudioSpeed(inputFile, speed));
+            return await Task.Run(() => AdjustAudioSpeed(inputFile, speed, taskId));
         }
 
         /// <summary>
         /// 调整音频音量。
         /// </summary>
-        protected virtual async Task<string> AdjustAudioVolumeAsync(string inputFile, int volume)
+        protected virtual async Task<string> AdjustAudioVolumeAsync(string inputFile, int volume, string taskId)
         {
-            return await Task.Run(() => AdjustAudioVolume(inputFile, volume));
+            return await Task.Run(() => AdjustAudioVolume(inputFile, volume, taskId));
         }
 
         /// <summary>
@@ -884,7 +916,7 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
 
         #region 方法
 
-        private string MergeAudioFiles(VoiceGenerationTaskItem[] taskItems, float spaceTime, string outputFile)
+        private string MergeAudioFiles(VoiceGenerationTaskItem[] taskItems, float spaceTime, string taskId)
         {
             List<string> validFiles = new List<string>();
             List<float> silenceDurations = new List<float>();
@@ -909,7 +941,7 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
                     throw new Exception("没有有效的音频文件可合并");
                 }
 
-                string tempOutput = Path.Combine(_tempFolder, $"merged_{Guid.NewGuid()}.wav");
+                string tempOutput = Path.Combine(_tempFolder, $"merged_{taskId}.wav");
 
                 if (validFiles.Count == 1)
                 {
@@ -966,7 +998,7 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
             }
         }
 
-        private string AdjustAudioSpeed(string inputFile, int speed)
+        private string AdjustAudioSpeed(string inputFile, int speed, string taskId)
         {
             try
             {
@@ -977,7 +1009,7 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
 
                 float tempo = speed / 100f;
                 string inputFileName = Path.GetFileName(inputFile);
-                string outputFileName = $"speed_{Guid.NewGuid()}.wav";
+                string outputFileName = $"speed_{taskId}.wav";
                 string outputFile = Path.Combine(_tempFolder, outputFileName);
                 string ffmpegArgs = $"-i \"{inputFileName}\" -filter:a \"atempo={tempo:F1}\" -y \"{outputFileName}\"";
 
@@ -997,7 +1029,7 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
         /// <param name="inputFile">输入文件路径。</param>
         /// <param name="volume">音量百分比。</param>
         /// <returns>调整后的文件路径。</returns>
-        private string AdjustAudioVolume(string inputFile, int volume)
+        private string AdjustAudioVolume(string inputFile, int volume, string taskId)
         {
             try
             {
@@ -1008,7 +1040,7 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
 
                 float volumeFactor = volume / 100f;
                 string inputFileName = Path.GetFileName(inputFile);
-                string outputFileName = $"volume_{Guid.NewGuid()}.wav";
+                string outputFileName = $"volume_{taskId}.wav";
                 string outputFile = Path.Combine(_tempFolder, outputFileName);
                 string ffmpegArgs = $"-i \"{inputFileName}\" -filter:a \"volume={volumeFactor:F2}\" -y \"{outputFileName}\"";
 
@@ -1051,7 +1083,7 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
                         continue;
                     }
 
-                    string adjustedFile = Path.Combine(_tempFolder, $"speed_item_{Guid.NewGuid()}.wav");
+                    string adjustedFile = Path.Combine(_tempFolder, $"speed_{Path.GetFileName(item.TempFile)}");
                     float tempo = itemSpeed / 100f;
                     string inputFileName = Path.GetFileName(item.TempFile);
                     string outputFileName = Path.GetFileName(adjustedFile);
@@ -1096,7 +1128,7 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
                         continue;
                     }
 
-                    string adjustedFile = Path.Combine(_tempFolder, $"volume_item_{Guid.NewGuid()}.wav");
+                    string adjustedFile = Path.Combine(_tempFolder, $"volume_{Path.GetFileName(item.TempFile)}");
                     float volumeFactor = itemVolume / 100f;
                     string inputFileName = Path.GetFileName(item.TempFile);
                     string outputFileName = Path.GetFileName(adjustedFile);
@@ -1112,7 +1144,13 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
             });
         }
 
-        private string ConvertToMp3(string inputFile, string outputFile)
+        /// <summary>
+        /// 将音频文件转换为MP3格式。
+        /// </summary>
+        /// <param name="inputFile">输入文件路径。</param>
+        /// <param name="outputFile">输出文件路径。</param>
+        /// <returns>临时输出文件路径。</returns>
+        public string ConvertToMp3(string inputFile, string outputFile)
         {
             string inputFileName = Path.GetFileName(inputFile);
             string outputFileName = $"mp3_{Guid.NewGuid()}.mp3";

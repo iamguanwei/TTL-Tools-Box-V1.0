@@ -31,6 +31,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.components = new System.ComponentModel.Container();
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
             this.pan_语音生成 = new System.Windows.Forms.Panel();
+            this.cb_语音生成_保留临时文件 = new System.Windows.Forms.CheckBox();
             this.bt_语音生成_打开角色声音预览目录 = new System.Windows.Forms.Button();
             this.pan_语音生成_工作状态 = new System.Windows.Forms.Panel();
             this.lab_语音生成_任务提交信息 = new System.Windows.Forms.Label();
@@ -50,15 +51,19 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.下移DToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
             this.预览声音MToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.打开临时文件夹EToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.转换为MP3PToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.toolStripMenuItem2 = new System.Windows.Forms.ToolStripSeparator();
             this.打开文件夹FToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.修改存储文件夹MToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem4 = new System.Windows.Forms.ToolStripSeparator();
+            this.打开临时文件夹EToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.清理临时文件MToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.toolStripMenuItem1 = new System.Windows.Forms.ToolStripSeparator();
             this.复制CToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.删除RToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem3 = new System.Windows.Forms.ToolStripSeparator();
             this.清空所有任务AToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.cb_语音生成_保留临时文件 = new System.Windows.Forms.CheckBox();
+            this.清空已完成任务NToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.pan_语音生成.SuspendLayout();
             this.pan_语音生成_工作状态.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgv_语音生成_任务清单)).BeginInit();
@@ -81,6 +86,18 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.pan_语音生成.Name = "pan_语音生成";
             this.pan_语音生成.Size = new System.Drawing.Size(1301, 652);
             this.pan_语音生成.TabIndex = 0;
+            // 
+            // cb_语音生成_保留临时文件
+            // 
+            this.cb_语音生成_保留临时文件.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.cb_语音生成_保留临时文件.AutoSize = true;
+            this.cb_语音生成_保留临时文件.Location = new System.Drawing.Point(827, 12);
+            this.cb_语音生成_保留临时文件.Name = "cb_语音生成_保留临时文件";
+            this.cb_语音生成_保留临时文件.Size = new System.Drawing.Size(96, 16);
+            this.cb_语音生成_保留临时文件.TabIndex = 22;
+            this.cb_语音生成_保留临时文件.Text = "保留临时文件";
+            this.cb_语音生成_保留临时文件.UseVisualStyleBackColor = true;
+            this.cb_语音生成_保留临时文件.CheckedChanged += new System.EventHandler(this.cb_语音生成_保留临时文件_CheckedChanged);
             // 
             // bt_语音生成_打开角色声音预览目录
             // 
@@ -217,16 +234,21 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.下移DToolStripMenuItem,
             this.toolStripSeparator2,
             this.预览声音MToolStripMenuItem,
-            this.打开临时文件夹EToolStripMenuItem,
+            this.转换为MP3PToolStripMenuItem,
+            this.toolStripMenuItem2,
             this.打开文件夹FToolStripMenuItem,
             this.修改存储文件夹MToolStripMenuItem,
             this.toolStripMenuItem4,
+            this.打开临时文件夹EToolStripMenuItem,
+            this.清理临时文件MToolStripMenuItem,
+            this.toolStripMenuItem1,
             this.复制CToolStripMenuItem,
             this.删除RToolStripMenuItem,
             this.toolStripMenuItem3,
+            this.清空已完成任务NToolStripMenuItem,
             this.清空所有任务AToolStripMenuItem});
             this.cms_语音生成_任务控制.Name = "cms_TTL生成队列";
-            this.cms_语音生成_任务控制.Size = new System.Drawing.Size(190, 292);
+            this.cms_语音生成_任务控制.Size = new System.Drawing.Size(190, 392);
             this.cms_语音生成_任务控制.Opening += new System.ComponentModel.CancelEventHandler(this.cms_语音生成_任务控制_Opening);
             // 
             // 启动SToolStripMenuItem
@@ -281,12 +303,17 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.预览声音MToolStripMenuItem.Text = "预览声音(&M)";
             this.预览声音MToolStripMenuItem.Click += new System.EventHandler(this.预览声音MToolStripMenuItem_Click);
             // 
-            // 打开临时文件夹EToolStripMenuItem
+            // 转换为MP3PToolStripMenuItem
             // 
-            this.打开临时文件夹EToolStripMenuItem.Name = "打开临时文件夹EToolStripMenuItem";
-            this.打开临时文件夹EToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
-            this.打开临时文件夹EToolStripMenuItem.Text = "打开临时文件夹(&E)";
-            this.打开临时文件夹EToolStripMenuItem.Click += new System.EventHandler(this.打开临时文件夹EToolStripMenuItem_Click);
+            this.转换为MP3PToolStripMenuItem.Name = "转换为MP3PToolStripMenuItem";
+            this.转换为MP3PToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
+            this.转换为MP3PToolStripMenuItem.Text = "转换为MP3(&P)...";
+            this.转换为MP3PToolStripMenuItem.Click += new System.EventHandler(this.转换为MP3PToolStripMenuItem_Click);
+            // 
+            // toolStripMenuItem2
+            // 
+            this.toolStripMenuItem2.Name = "toolStripMenuItem2";
+            this.toolStripMenuItem2.Size = new System.Drawing.Size(186, 6);
             // 
             // 打开文件夹FToolStripMenuItem
             // 
@@ -306,6 +333,25 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             // 
             this.toolStripMenuItem4.Name = "toolStripMenuItem4";
             this.toolStripMenuItem4.Size = new System.Drawing.Size(186, 6);
+            // 
+            // 打开临时文件夹EToolStripMenuItem
+            // 
+            this.打开临时文件夹EToolStripMenuItem.Name = "打开临时文件夹EToolStripMenuItem";
+            this.打开临时文件夹EToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
+            this.打开临时文件夹EToolStripMenuItem.Text = "打开临时文件夹(&E)";
+            this.打开临时文件夹EToolStripMenuItem.Click += new System.EventHandler(this.打开临时文件夹EToolStripMenuItem_Click);
+            // 
+            // 清理临时文件MToolStripMenuItem
+            // 
+            this.清理临时文件MToolStripMenuItem.Name = "清理临时文件MToolStripMenuItem";
+            this.清理临时文件MToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
+            this.清理临时文件MToolStripMenuItem.Text = "清理临时文件(&M)...";
+            this.清理临时文件MToolStripMenuItem.Click += new System.EventHandler(this.清理临时文件MToolStripMenuItem_Click);
+            // 
+            // toolStripMenuItem1
+            // 
+            this.toolStripMenuItem1.Name = "toolStripMenuItem1";
+            this.toolStripMenuItem1.Size = new System.Drawing.Size(186, 6);
             // 
             // 复制CToolStripMenuItem
             // 
@@ -333,17 +379,12 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.清空所有任务AToolStripMenuItem.Text = "清空所有任务(&A)...";
             this.清空所有任务AToolStripMenuItem.Click += new System.EventHandler(this.清空所有任务AToolStripMenuItem_Click);
             // 
-            // cb_语音生成_保留临时文件
+            // 清空已完成任务NToolStripMenuItem
             // 
-            this.cb_语音生成_保留临时文件.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.cb_语音生成_保留临时文件.AutoSize = true;
-            this.cb_语音生成_保留临时文件.Location = new System.Drawing.Point(827, 12);
-            this.cb_语音生成_保留临时文件.Name = "cb_语音生成_保留临时文件";
-            this.cb_语音生成_保留临时文件.Size = new System.Drawing.Size(96, 16);
-            this.cb_语音生成_保留临时文件.TabIndex = 22;
-            this.cb_语音生成_保留临时文件.Text = "保留临时文件";
-            this.cb_语音生成_保留临时文件.UseVisualStyleBackColor = true;
-            this.cb_语音生成_保留临时文件.CheckedChanged += new System.EventHandler(this.cb_语音生成_保留临时文件_CheckedChanged);
+            this.清空已完成任务NToolStripMenuItem.Name = "清空已完成任务NToolStripMenuItem";
+            this.清空已完成任务NToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
+            this.清空已完成任务NToolStripMenuItem.Text = "清空已完成任务(&N)...";
+            this.清空已完成任务NToolStripMenuItem.Click += new System.EventHandler(this.清空已完成任务NToolStripMenuItem_Click);
             // 
             // VoiceGenerationPanel
             // 
@@ -501,5 +542,10 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// </summary>
         internal System.Windows.Forms.ToolStripMenuItem 清空所有任务AToolStripMenuItem;
         private System.Windows.Forms.CheckBox cb_语音生成_保留临时文件;
+        private System.Windows.Forms.ToolStripMenuItem 清理临时文件MToolStripMenuItem;
+        private System.Windows.Forms.ToolStripSeparator toolStripMenuItem1;
+        private System.Windows.Forms.ToolStripMenuItem 转换为MP3PToolStripMenuItem;
+        private System.Windows.Forms.ToolStripSeparator toolStripMenuItem2;
+        private System.Windows.Forms.ToolStripMenuItem 清空已完成任务NToolStripMenuItem;
     }
 }
