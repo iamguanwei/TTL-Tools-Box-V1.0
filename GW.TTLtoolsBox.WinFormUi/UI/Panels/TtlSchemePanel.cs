@@ -289,6 +289,8 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                         bindSpeakersToGrid(currentEngine, true);
                     }
                 }
+
+                VoiceGenerationTaskQueue?.TryResume();
             }
         }
 

@@ -1165,7 +1165,7 @@ namespace GW.TTLtoolsBox.WinFormUi
             _voiceGenerationPanel.TtlSchemeController = _ttlSchemeController;
             _voiceGenerationPanel.TempFolder = _tempFolder;
             _voiceGenerationPanel.FfmpegPath = Ffmpeg_文件;
-            _voiceGenerationPanel.GetEngineConnectionStatus = () => _ttlSchemePanel?.ConnectionStatus ?? TtlEngineConnectionStatus.未连接;
+            _voiceGenerationPanel.GetEngineConnectionStatus = () => _ttlSchemeController?.ConnectionStatus ?? TtlEngineConnectionStatus.未连接;
             _voiceGenerationPanel.RequestEngineConnection = () => checkAndConnectTtlEngineWhenTaskStarts();
             _voiceGenerationPanel.PlaySound = playSound;
             _voiceGenerationPanel.FindSpeaker = findSpeakerByShowName;
