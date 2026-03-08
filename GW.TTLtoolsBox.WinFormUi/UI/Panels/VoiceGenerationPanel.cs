@@ -576,7 +576,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             预览声音MToolStripMenuItem.Enabled = false;
             打开文件夹FToolStripMenuItem.Enabled = false;
             打开临时文件夹EToolStripMenuItem.Enabled = selectedCount == 1;
-            修改存储文件夹MToolStripMenuItem.Enabled = false;
+            修改保存文件MToolStripMenuItem.Enabled = false;
             复制CToolStripMenuItem.Enabled = false;
             删除RToolStripMenuItem.Enabled = false;
             清空所有任务AToolStripMenuItem.Enabled = totalRows > 0;
@@ -639,8 +639,10 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                         Path.GetExtension(t.SaveFile).Equals(".wav", StringComparison.OrdinalIgnoreCase));
                     转换为MP3PToolStripMenuItem.Enabled = (allCompleted && allWavAndExist) || allMp3ConversionFailed;
 
-                    bool hasPreviewTask = selectedTasks.Any(t => isPreviewVoiceTask(t));
-                    修改存储文件夹MToolStripMenuItem.Enabled = !hasPreviewTask && !anyConvertingMp3 && !allMp3ConversionFailed;
+                    bool canModifySaveFile = isSingleSelection &&
+                        (selectedTasks[0].Status == VoiceGenerationTaskStatus.未开始 ||
+                         selectedTasks[0].Status == VoiceGenerationTaskStatus.排队中);
+                    修改保存文件MToolStripMenuItem.Enabled = canModifySaveFile;
                 }
             }
         }
@@ -1008,49 +1010,57 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         }
 
         /// <summary>
-        /// 事件处理：点击"修改存储文件夹"菜单项。
+        /// 事件处理：点击"修改保存文件"菜单项。
         /// </summary>
-        private void 修改存储文件夹MToolStripMenuItem_Click(object sender, EventArgs e)
+        private void 修改保存文件MToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            if (dgv_语音生成_任务清单.SelectedRows.Count > 0)
+            if (dgv_语音生成_任务清单.SelectedRows.Count != 1)
             {
-                List<VoiceGenerationTask> selectedTasks = new List<VoiceGenerationTask>();
-                foreach (DataGridViewRow row in dgv_语音生成_任务清单.SelectedRows)
+                return;
+            }
+
+            VoiceGenerationTask task = dgv_语音生成_任务清单.SelectedRows[0].DataBoundItem as VoiceGenerationTask;
+            if (task == null)
+            {
+                return;
+            }
+
+            if (task.Status != VoiceGenerationTaskStatus.未开始 &&
+                task.Status != VoiceGenerationTaskStatus.排队中)
+            {
+                MessageBox.Show(
+                    "只能修改\"未开始\"或\"排队中\"状态的任务。",
+                    "提示",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                return;
+            }
+
+            using (SaveFileDialog saveDialog = new SaveFileDialog())
+            {
+                saveDialog.Filter = "WAV文件|*.wav";
+                saveDialog.Title = "选择保存文件";
+                saveDialog.OverwritePrompt = true;
+
+                if (!string.IsNullOrWhiteSpace(task.SaveFile))
                 {
-                    VoiceGenerationTask task = row.DataBoundItem as VoiceGenerationTask;
-                    if (task != null)
+                    string folder = Path.GetDirectoryName(task.SaveFile);
+                    string fileName = Path.GetFileName(task.SaveFile);
+                    if (!string.IsNullOrWhiteSpace(folder) && Directory.Exists(folder))
                     {
-                        selectedTasks.Add(task);
+                        saveDialog.InitialDirectory = folder;
+                    }
+                    if (!string.IsNullOrWhiteSpace(fileName))
+                    {
+                        saveDialog.FileName = fileName;
                     }
                 }
 
-                if (selectedTasks.Count == 0)
+                if (saveDialog.ShowDialog() == DialogResult.OK)
                 {
-                    return;
-                }
-
-                using (FolderBrowserDialog folderDialog = new FolderBrowserDialog())
-                {
-                    folderDialog.Description = "选择保存文件夹";
-                    folderDialog.ShowNewFolderButton = true;
-
-                    VoiceGenerationTask firstTask = selectedTasks[0];
-                    string currentFolder = Path.GetDirectoryName(firstTask.SaveFile);
-                    if (!string.IsNullOrWhiteSpace(currentFolder) && Directory.Exists(currentFolder))
-                    {
-                        folderDialog.SelectedPath = currentFolder;
-                    }
-
-                    if (folderDialog.ShowDialog() == DialogResult.OK)
-                    {
-                        foreach (var task in selectedTasks)
-                        {
-                            string fileName = Path.GetFileName(task.SaveFile);
-                            task.SaveFile = Path.Combine(folderDialog.SelectedPath, fileName);
-                        }
-                        save语音生成任务清单Data();
-                        refresh语音生成任务清单DataGridView();
-                    }
+                    task.SaveFile = saveDialog.FileName;
+                    save语音生成任务清单Data();
+                    refresh语音生成任务清单DataGridView();
                 }
             }
         }

@@ -223,6 +223,12 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         {
             initConnectionStatusTimer();
             initTTL方案Ui();
+
+            if (TtlSchemeController != null)
+            {
+                TtlSchemeController.ConnectionStatusChanged += TtlSchemeController_ConnectionStatusChanged;
+                TtlSchemeController.StartConnectionTimer();
+            }
         }
 
         /// <summary>
@@ -252,48 +258,37 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// </summary>
         private void handleConnectionStatusCountdown()
         {
-            switch (_ttlEngineConnectionStatus)
+            updateTtlEngineConnectionStatusLabel();
+            OnConnectionStatusChanged(_ttlEngineConnectionStatus, _ttlEngineConnectionCountdown, _ttlEngineRetryCountdown);
+        }
+
+        private void TtlSchemeController_ConnectionStatusChanged(object sender, TtlSchemeController.ConnectionStatusChangedEventArgs e)
+        {
+            _ttlEngineConnectionStatus = e.Status;
+            _ttlEngineConnectionCountdown = e.ConnectionCountdown;
+            _ttlEngineRetryCountdown = e.RetryCountdown;
+
+            updateTtlEngineConnectionStatusLabel();
+            OnConnectionStatusChanged(e.Status, e.ConnectionCountdown, e.RetryCountdown);
+
+            bool statusChangedToConnected = e.Status == TtlEngineConnectionStatus.连接成功
+                && _lastConnectionStatus != TtlEngineConnectionStatus.连接成功;
+            _lastConnectionStatus = e.Status;
+
+            if (statusChangedToConnected)
             {
-                case TtlEngineConnectionStatus.连接中:
-                    _ttlEngineConnectionCountdown--;
-                    if (_ttlEngineConnectionCountdown <= 0)
+                var currentEngine = TtlSchemeController?.CurrentEngineConnector;
+                if (currentEngine != null)
+                {
+                    if (currentEngine.Speakers == null || currentEngine.Speakers.Length == 0)
                     {
-                        _ttlEngineConnectionStatus = TtlEngineConnectionStatus.连接失败;
-                        _ttlEngineRetryCountdown = Constants.连接失败_重试间隔秒数;
-                    }
-                    updateTtlEngineConnectionStatusLabel();
-                    OnConnectionStatusChanged(_ttlEngineConnectionStatus, _ttlEngineConnectionCountdown, _ttlEngineRetryCountdown);
-                    break;
-
-                case TtlEngineConnectionStatus.连接成功:
-                    _ttlEngineRetryCountdown--;
-                    if (_ttlEngineRetryCountdown <= 0)
-                    {
-                        verifyTtlEngineConnectionSilently();
+                        createSpeakersFromRoles(currentEngine, true);
                     }
                     else
                     {
-                        updateTtlEngineConnectionStatusLabel();
-                        OnConnectionStatusChanged(_ttlEngineConnectionStatus, 0, _ttlEngineRetryCountdown);
+                        bindSpeakersToGrid(currentEngine, true);
                     }
-                    break;
-
-                case TtlEngineConnectionStatus.连接失败:
-                    _ttlEngineRetryCountdown--;
-                    if (_ttlEngineRetryCountdown <= 0)
-                    {
-                        start连接TTL引擎();
-                    }
-                    else
-                    {
-                        updateTtlEngineConnectionStatusLabel();
-                        OnConnectionStatusChanged(_ttlEngineConnectionStatus, 0, _ttlEngineRetryCountdown);
-                    }
-                    break;
-
-                case TtlEngineConnectionStatus.未连接:
-                default:
-                    break;
+                }
             }
         }
 
@@ -573,6 +568,11 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         private int _ttlEngineRetryCountdown = 0;
 
         /// <summary>
+        /// 上一次的连接状态，用于检测状态变化。
+        /// </summary>
+        private TtlEngineConnectionStatus _lastConnectionStatus = TtlEngineConnectionStatus.未连接;
+
+        /// <summary>
         /// 连接状态更新定时器。
         /// </summary>
         private System.Windows.Forms.Timer _connectionStatusTimer = null;
@@ -754,47 +754,11 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 return;
             }
 
-            int timeoutSeconds = (int)currentEngine.ConnectionTimeout.TotalSeconds;
-            if (timeoutSeconds <= 0)
+            await TtlSchemeController.ConnectAsync();
+
+            if (TtlSchemeController.ConnectionStatus == TtlEngineConnectionStatus.连接成功)
             {
-                timeoutSeconds = 30;
-            }
-
-            _ttlEngineConnectionStatus = TtlEngineConnectionStatus.连接中;
-            _ttlEngineConnectionCountdown = timeoutSeconds;
-            OnConnectionStatusChanged(_ttlEngineConnectionStatus, _ttlEngineConnectionCountdown, 0);
-            updateTtlEngineConnectionStatusLabel();
-            refreshTTL方案Ui();
-
-            try
-            {
-                await currentEngine.ConnectAsync();
-
-                _ttlEngineConnectionStatus = TtlEngineConnectionStatus.连接成功;
-                _ttlEngineRetryCountdown = Constants.连接成功_验证间隔秒数;
-                OnConnectionStatusChanged(_ttlEngineConnectionStatus, 0, _ttlEngineRetryCountdown);
-
-                if (currentEngine.Speakers == null || currentEngine.Speakers.Length == 0)
-                {
-                    createSpeakersFromRoles(currentEngine, true);
-                }
-                else
-                {
-                    bindSpeakersToGrid(currentEngine, true);
-                }
-
                 VoiceGenerationTaskQueue?.TryResume();
-            }
-            catch
-            {
-                _ttlEngineConnectionStatus = TtlEngineConnectionStatus.连接失败;
-                _ttlEngineRetryCountdown = Constants.连接失败_重试间隔秒数;
-                OnConnectionStatusChanged(_ttlEngineConnectionStatus, 0, _ttlEngineRetryCountdown);
-
-                if (currentEngine.Speakers != null && currentEngine.Speakers.Length > 0)
-                {
-                    bindSpeakersToGrid(currentEngine);
-                }
             }
 
             updateTtlEngineConnectionStatusLabel();
@@ -816,20 +780,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 return;
             }
 
-            try
-            {
-                await currentEngine.ConnectAsync();
-
-                _ttlEngineConnectionStatus = TtlEngineConnectionStatus.连接成功;
-                _ttlEngineRetryCountdown = Constants.连接成功_验证间隔秒数;
-                OnConnectionStatusChanged(_ttlEngineConnectionStatus, 0, _ttlEngineRetryCountdown);
-            }
-            catch
-            {
-                _ttlEngineConnectionStatus = TtlEngineConnectionStatus.连接失败;
-                _ttlEngineRetryCountdown = Constants.连接失败_重试间隔秒数;
-                OnConnectionStatusChanged(_ttlEngineConnectionStatus, 0, _ttlEngineRetryCountdown);
-            }
+            await TtlSchemeController.ConnectAsync();
 
             updateTtlEngineConnectionStatusLabel();
         }

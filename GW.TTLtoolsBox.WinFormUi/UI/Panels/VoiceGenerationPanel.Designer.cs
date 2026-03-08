@@ -54,7 +54,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.转换为MP3PToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem2 = new System.Windows.Forms.ToolStripSeparator();
             this.打开文件夹FToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.修改存储文件夹MToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.修改保存文件MToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem4 = new System.Windows.Forms.ToolStripSeparator();
             this.打开临时文件夹EToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.清理临时文件MToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -62,8 +62,8 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.复制CToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.删除RToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItem3 = new System.Windows.Forms.ToolStripSeparator();
-            this.清空所有任务AToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.清空已完成任务NToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.清空所有任务AToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.pan_语音生成.SuspendLayout();
             this.pan_语音生成_工作状态.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgv_语音生成_任务清单)).BeginInit();
@@ -237,7 +237,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.转换为MP3PToolStripMenuItem,
             this.toolStripMenuItem2,
             this.打开文件夹FToolStripMenuItem,
-            this.修改存储文件夹MToolStripMenuItem,
+            this.修改保存文件MToolStripMenuItem,
             this.toolStripMenuItem4,
             this.打开临时文件夹EToolStripMenuItem,
             this.清理临时文件MToolStripMenuItem,
@@ -248,143 +248,143 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.清空已完成任务NToolStripMenuItem,
             this.清空所有任务AToolStripMenuItem});
             this.cms_语音生成_任务控制.Name = "cms_TTL生成队列";
-            this.cms_语音生成_任务控制.Size = new System.Drawing.Size(190, 392);
+            this.cms_语音生成_任务控制.Size = new System.Drawing.Size(188, 392);
             this.cms_语音生成_任务控制.Opening += new System.ComponentModel.CancelEventHandler(this.cms_语音生成_任务控制_Opening);
             // 
             // 启动SToolStripMenuItem
             // 
             this.启动SToolStripMenuItem.Name = "启动SToolStripMenuItem";
-            this.启动SToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
+            this.启动SToolStripMenuItem.Size = new System.Drawing.Size(187, 22);
             this.启动SToolStripMenuItem.Text = "启动(&S)";
             this.启动SToolStripMenuItem.Click += new System.EventHandler(this.启动SToolStripMenuItem_Click);
             // 
             // 停止TToolStripMenuItem
             // 
             this.停止TToolStripMenuItem.Name = "停止TToolStripMenuItem";
-            this.停止TToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
+            this.停止TToolStripMenuItem.Size = new System.Drawing.Size(187, 22);
             this.停止TToolStripMenuItem.Text = "停止(&T)";
             this.停止TToolStripMenuItem.Click += new System.EventHandler(this.暂停TToolStripMenuItem_Click);
             // 
             // 重新启动SToolStripMenuItem
             // 
             this.重新启动SToolStripMenuItem.Name = "重新启动SToolStripMenuItem";
-            this.重新启动SToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
+            this.重新启动SToolStripMenuItem.Size = new System.Drawing.Size(187, 22);
             this.重新启动SToolStripMenuItem.Text = "重新启动(&S)";
             this.重新启动SToolStripMenuItem.Click += new System.EventHandler(this.重新启动SToolStripMenuItem_Click);
             // 
             // toolStripSeparator1
             // 
             this.toolStripSeparator1.Name = "toolStripSeparator1";
-            this.toolStripSeparator1.Size = new System.Drawing.Size(186, 6);
+            this.toolStripSeparator1.Size = new System.Drawing.Size(184, 6);
             // 
             // 上移UToolStripMenuItem
             // 
             this.上移UToolStripMenuItem.Name = "上移UToolStripMenuItem";
-            this.上移UToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
+            this.上移UToolStripMenuItem.Size = new System.Drawing.Size(187, 22);
             this.上移UToolStripMenuItem.Text = "上移(&U)";
             this.上移UToolStripMenuItem.Click += new System.EventHandler(this.上移UToolStripMenuItem_Click);
             // 
             // 下移DToolStripMenuItem
             // 
             this.下移DToolStripMenuItem.Name = "下移DToolStripMenuItem";
-            this.下移DToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
+            this.下移DToolStripMenuItem.Size = new System.Drawing.Size(187, 22);
             this.下移DToolStripMenuItem.Text = "下移(&D)";
             this.下移DToolStripMenuItem.Click += new System.EventHandler(this.下移DToolStripMenuItem_Click);
             // 
             // toolStripSeparator2
             // 
             this.toolStripSeparator2.Name = "toolStripSeparator2";
-            this.toolStripSeparator2.Size = new System.Drawing.Size(186, 6);
+            this.toolStripSeparator2.Size = new System.Drawing.Size(184, 6);
             // 
             // 预览声音MToolStripMenuItem
             // 
             this.预览声音MToolStripMenuItem.Name = "预览声音MToolStripMenuItem";
-            this.预览声音MToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
+            this.预览声音MToolStripMenuItem.Size = new System.Drawing.Size(187, 22);
             this.预览声音MToolStripMenuItem.Text = "预览声音(&M)";
             this.预览声音MToolStripMenuItem.Click += new System.EventHandler(this.预览声音MToolStripMenuItem_Click);
             // 
             // 转换为MP3PToolStripMenuItem
             // 
             this.转换为MP3PToolStripMenuItem.Name = "转换为MP3PToolStripMenuItem";
-            this.转换为MP3PToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
+            this.转换为MP3PToolStripMenuItem.Size = new System.Drawing.Size(187, 22);
             this.转换为MP3PToolStripMenuItem.Text = "转换为MP3(&P)...";
             this.转换为MP3PToolStripMenuItem.Click += new System.EventHandler(this.转换为MP3PToolStripMenuItem_Click);
             // 
             // toolStripMenuItem2
             // 
             this.toolStripMenuItem2.Name = "toolStripMenuItem2";
-            this.toolStripMenuItem2.Size = new System.Drawing.Size(186, 6);
+            this.toolStripMenuItem2.Size = new System.Drawing.Size(184, 6);
             // 
             // 打开文件夹FToolStripMenuItem
             // 
             this.打开文件夹FToolStripMenuItem.Name = "打开文件夹FToolStripMenuItem";
-            this.打开文件夹FToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
+            this.打开文件夹FToolStripMenuItem.Size = new System.Drawing.Size(187, 22);
             this.打开文件夹FToolStripMenuItem.Text = "打开保存文件夹(&F)";
             this.打开文件夹FToolStripMenuItem.Click += new System.EventHandler(this.打开文件夹FToolStripMenuItem_Click);
             // 
-            // 修改存储文件夹MToolStripMenuItem
+            // 修改保存文件MToolStripMenuItem
             // 
-            this.修改存储文件夹MToolStripMenuItem.Name = "修改存储文件夹MToolStripMenuItem";
-            this.修改存储文件夹MToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
-            this.修改存储文件夹MToolStripMenuItem.Text = "修改保存文件夹(&M)...";
-            this.修改存储文件夹MToolStripMenuItem.Click += new System.EventHandler(this.修改存储文件夹MToolStripMenuItem_Click);
+            this.修改保存文件MToolStripMenuItem.Name = "修改保存文件MToolStripMenuItem";
+            this.修改保存文件MToolStripMenuItem.Size = new System.Drawing.Size(187, 22);
+            this.修改保存文件MToolStripMenuItem.Text = "修改保存文件(&M)...";
+            this.修改保存文件MToolStripMenuItem.Click += new System.EventHandler(this.修改保存文件MToolStripMenuItem_Click);
             // 
             // toolStripMenuItem4
             // 
             this.toolStripMenuItem4.Name = "toolStripMenuItem4";
-            this.toolStripMenuItem4.Size = new System.Drawing.Size(186, 6);
+            this.toolStripMenuItem4.Size = new System.Drawing.Size(184, 6);
             // 
             // 打开临时文件夹EToolStripMenuItem
             // 
             this.打开临时文件夹EToolStripMenuItem.Name = "打开临时文件夹EToolStripMenuItem";
-            this.打开临时文件夹EToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
+            this.打开临时文件夹EToolStripMenuItem.Size = new System.Drawing.Size(187, 22);
             this.打开临时文件夹EToolStripMenuItem.Text = "打开临时文件夹(&E)";
             this.打开临时文件夹EToolStripMenuItem.Click += new System.EventHandler(this.打开临时文件夹EToolStripMenuItem_Click);
             // 
             // 清理临时文件MToolStripMenuItem
             // 
             this.清理临时文件MToolStripMenuItem.Name = "清理临时文件MToolStripMenuItem";
-            this.清理临时文件MToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
+            this.清理临时文件MToolStripMenuItem.Size = new System.Drawing.Size(187, 22);
             this.清理临时文件MToolStripMenuItem.Text = "清理临时文件(&M)...";
             this.清理临时文件MToolStripMenuItem.Click += new System.EventHandler(this.清理临时文件MToolStripMenuItem_Click);
             // 
             // toolStripMenuItem1
             // 
             this.toolStripMenuItem1.Name = "toolStripMenuItem1";
-            this.toolStripMenuItem1.Size = new System.Drawing.Size(186, 6);
+            this.toolStripMenuItem1.Size = new System.Drawing.Size(184, 6);
             // 
             // 复制CToolStripMenuItem
             // 
             this.复制CToolStripMenuItem.Name = "复制CToolStripMenuItem";
-            this.复制CToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
+            this.复制CToolStripMenuItem.Size = new System.Drawing.Size(187, 22);
             this.复制CToolStripMenuItem.Text = "复制(&C)";
             this.复制CToolStripMenuItem.Click += new System.EventHandler(this.复制CToolStripMenuItem_Click);
             // 
             // 删除RToolStripMenuItem
             // 
             this.删除RToolStripMenuItem.Name = "删除RToolStripMenuItem";
-            this.删除RToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
+            this.删除RToolStripMenuItem.Size = new System.Drawing.Size(187, 22);
             this.删除RToolStripMenuItem.Text = "删除(&R)";
             this.删除RToolStripMenuItem.Click += new System.EventHandler(this.删除RToolStripMenuItem_Click);
             // 
             // toolStripMenuItem3
             // 
             this.toolStripMenuItem3.Name = "toolStripMenuItem3";
-            this.toolStripMenuItem3.Size = new System.Drawing.Size(186, 6);
-            // 
-            // 清空所有任务AToolStripMenuItem
-            // 
-            this.清空所有任务AToolStripMenuItem.Name = "清空所有任务AToolStripMenuItem";
-            this.清空所有任务AToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
-            this.清空所有任务AToolStripMenuItem.Text = "清空所有任务(&A)...";
-            this.清空所有任务AToolStripMenuItem.Click += new System.EventHandler(this.清空所有任务AToolStripMenuItem_Click);
+            this.toolStripMenuItem3.Size = new System.Drawing.Size(184, 6);
             // 
             // 清空已完成任务NToolStripMenuItem
             // 
             this.清空已完成任务NToolStripMenuItem.Name = "清空已完成任务NToolStripMenuItem";
-            this.清空已完成任务NToolStripMenuItem.Size = new System.Drawing.Size(189, 22);
+            this.清空已完成任务NToolStripMenuItem.Size = new System.Drawing.Size(187, 22);
             this.清空已完成任务NToolStripMenuItem.Text = "清空已完成任务(&N)...";
             this.清空已完成任务NToolStripMenuItem.Click += new System.EventHandler(this.清空已完成任务NToolStripMenuItem_Click);
+            // 
+            // 清空所有任务AToolStripMenuItem
+            // 
+            this.清空所有任务AToolStripMenuItem.Name = "清空所有任务AToolStripMenuItem";
+            this.清空所有任务AToolStripMenuItem.Size = new System.Drawing.Size(187, 22);
+            this.清空所有任务AToolStripMenuItem.Text = "清空所有任务(&A)...";
+            this.清空所有任务AToolStripMenuItem.Click += new System.EventHandler(this.清空所有任务AToolStripMenuItem_Click);
             // 
             // VoiceGenerationPanel
             // 
@@ -515,7 +515,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// <summary>
         /// 修改存储文件夹菜单项。
         /// </summary>
-        internal System.Windows.Forms.ToolStripMenuItem 修改存储文件夹MToolStripMenuItem;
+        internal System.Windows.Forms.ToolStripMenuItem 修改保存文件MToolStripMenuItem;
 
         /// <summary>
         /// 分隔线4。
