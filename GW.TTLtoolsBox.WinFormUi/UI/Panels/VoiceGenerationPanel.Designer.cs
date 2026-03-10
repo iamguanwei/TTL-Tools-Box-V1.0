@@ -64,6 +64,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.toolStripMenuItem3 = new System.Windows.Forms.ToolStripSeparator();
             this.清空已完成任务NToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.清空所有任务AToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.插队IToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.pan_语音生成.SuspendLayout();
             this.pan_语音生成_工作状态.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.dgv_语音生成_任务清单)).BeginInit();
@@ -229,6 +230,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.启动SToolStripMenuItem,
             this.停止TToolStripMenuItem,
             this.重新启动SToolStripMenuItem,
+            this.插队IToolStripMenuItem,
             this.toolStripSeparator1,
             this.上移UToolStripMenuItem,
             this.下移DToolStripMenuItem,
@@ -248,7 +250,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.清空已完成任务NToolStripMenuItem,
             this.清空所有任务AToolStripMenuItem});
             this.cms_语音生成_任务控制.Name = "cms_TTL生成队列";
-            this.cms_语音生成_任务控制.Size = new System.Drawing.Size(188, 392);
+            this.cms_语音生成_任务控制.Size = new System.Drawing.Size(188, 414);
             this.cms_语音生成_任务控制.Opening += new System.ComponentModel.CancelEventHandler(this.cms_语音生成_任务控制_Opening);
             // 
             // 启动SToolStripMenuItem
@@ -385,6 +387,13 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.清空所有任务AToolStripMenuItem.Size = new System.Drawing.Size(187, 22);
             this.清空所有任务AToolStripMenuItem.Text = "清空所有任务(&A)...";
             this.清空所有任务AToolStripMenuItem.Click += new System.EventHandler(this.清空所有任务AToolStripMenuItem_Click);
+            // 
+            // 插队IToolStripMenuItem
+            // 
+            this.插队IToolStripMenuItem.Name = "插队IToolStripMenuItem";
+            this.插队IToolStripMenuItem.Size = new System.Drawing.Size(187, 22);
+            this.插队IToolStripMenuItem.Text = "插队(&I)";
+            this.插队IToolStripMenuItem.Click += new System.EventHandler(this.插队IToolStripMenuItem_Click);
             // 
             // VoiceGenerationPanel
             // 
@@ -547,5 +556,6 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         private System.Windows.Forms.ToolStripMenuItem 转换为MP3PToolStripMenuItem;
         private System.Windows.Forms.ToolStripSeparator toolStripMenuItem2;
         private System.Windows.Forms.ToolStripMenuItem 清空已完成任务NToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem 插队IToolStripMenuItem;
     }
 }

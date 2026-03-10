@@ -80,6 +80,15 @@ namespace GW.TTLtoolsBox.Core.FileAccesser
         }
 
         /// <summary>
+        /// 获取或设置文本拆分的拆分长度。
+        /// </summary>
+        public int? TextSplit_SplitLength
+        {
+            get { return _projectData.TextSplit_SplitLength; }
+            set { _projectData.TextSplit_SplitLength = value; }
+        }
+
+        /// <summary>
         /// 获取保存的文件名。
         /// </summary>
         public string FileName { get; private set; } = string.Empty;

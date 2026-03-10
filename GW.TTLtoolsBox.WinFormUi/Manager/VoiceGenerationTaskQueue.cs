@@ -310,6 +310,32 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
                                   t.Status == VoiceGenerationTaskStatus.转换MP3);
         }
 
+        /// <summary>
+        /// 将指定任务设为优先执行。
+        /// </summary>
+        /// <param name="task">要优先执行的任务。</param>
+        /// <remarks>
+        /// 该方法会停止当前正在执行的任务，并将指定任务设为优先执行。
+        /// 任务顺序不会改变。
+        /// </remarks>
+        public void PrioritizeTask(VoiceGenerationTask task)
+        {
+            if (task == null) return;
+            if (task.Status != VoiceGenerationTaskStatus.排队中) return;
+
+            if (_isRunning && _currentTask != null)
+            {
+                _shouldStop = true;
+            }
+
+            _priorityTask = task;
+
+            if (!_isRunning)
+            {
+                ProcessNextTask();
+            }
+        }
+
         #endregion
 
         #region 事件
@@ -385,12 +411,22 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
                 }
 
                 VoiceGenerationTask nextTask = null;
-                foreach (var task in _tasks)
+
+                if (_priorityTask != null && _priorityTask.Status == VoiceGenerationTaskStatus.排队中)
                 {
-                    if (task.Status == VoiceGenerationTaskStatus.排队中)
+                    nextTask = _priorityTask;
+                    _priorityTask = null;
+                }
+                else
+                {
+                    _priorityTask = null;
+                    foreach (var task in _tasks)
                     {
-                        nextTask = task;
-                        break;
+                        if (task.Status == VoiceGenerationTaskStatus.排队中)
+                        {
+                            nextTask = task;
+                            break;
+                        }
                     }
                 }
 
@@ -911,6 +947,7 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
         private bool _shouldStop = false;
         private VoiceGenerationTask _currentTask = null;
         private bool _currentTaskDeleted = false;
+        private VoiceGenerationTask _priorityTask = null;
 
         #endregion
 

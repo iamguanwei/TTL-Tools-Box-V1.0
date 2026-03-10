@@ -126,6 +126,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             {
                 projectFile.TextSplit_OriginalText = this.tb_原始文本.Text;
                 projectFile.TextSplit_FinalText = this.tb_最终文本.Text;
+                projectFile.TextSplit_SplitLength = (int)this.nud_拆分长度.Value;
             }
         }
 
@@ -133,7 +134,9 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// 从项目文件加载面板数据。
         /// </summary>
         /// <param name="projectFile">项目文件实例。</param>
-        public void LoadData(ProjectFile projectFile)
+        /// <param name="loadFromSystemConfig">是否从系统配置加载拆分长度（默认为false）。</param>
+        /// <param name="keepSplitLength">是否保持UI现有拆分长度值不变（默认为false）。</param>
+        public void LoadData(ProjectFile projectFile, bool loadFromSystemConfig = false, bool keepSplitLength = false)
         {
             if (projectFile != null)
             {
@@ -142,7 +145,26 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 {
                     this.tb_原始文本.Text = projectFile.TextSplit_OriginalText;
                     this.tb_最终文本.Text = projectFile.TextSplit_FinalText;
-                    this.nud_拆分长度.Value = Setting.GetTextSplit_SplitLength(CurrentEngineId, 100);
+
+                    if (!keepSplitLength)
+                    {
+                        int splitLength = 100;
+                        _isSplitLengthFromProject = false;
+
+                        if (!loadFromSystemConfig && projectFile.TextSplit_SplitLength.HasValue)
+                        {
+                            splitLength = projectFile.TextSplit_SplitLength.Value;
+                            _isSplitLengthFromProject = true;
+                        }
+                        else
+                        {
+                            splitLength = Setting.GetTextSplit_SplitLength(CurrentEngineId, 100);
+                            _isSplitLengthFromProject = false;
+                        }
+
+                        this.nud_拆分长度.Value = splitLength;
+                    }
+
                     this.cb_文本拆分_按句子拆分_忽略换行符.Checked = Setting.GetTextSplit_IgnoreLineBreaks(CurrentEngineId, true);
                 });
                 _isLoading = false;
@@ -166,6 +188,12 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// 是否正在加载数据，用于防止加载时触发修改事件。
         /// </summary>
         private bool _isLoading = false;
+
+        /// <summary>
+        /// 拆分长度值是否来自项目文件。
+        /// 用于判断是否需要在UI修改时保存到系统配置。
+        /// </summary>
+        private bool _isSplitLengthFromProject = false;
 
         /// <summary>
         /// 工具提示组件。
@@ -474,6 +502,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             if (!_isLoading)
             {
                 Setting.SetTextSplit_SplitLength(CurrentEngineId, (int)this.nud_拆分长度.Value);
+                _isSplitLengthFromProject = false;
             }
         }
 

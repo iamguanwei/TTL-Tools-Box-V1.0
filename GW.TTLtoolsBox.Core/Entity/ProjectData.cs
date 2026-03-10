@@ -53,6 +53,12 @@ namespace GW.TTLtoolsBox.Core.Entity
         public string TextSplit_FinalText { get; set; } = string.Empty;
 
         /// <summary>
+        /// 获取或设置文本拆分的拆分长度。
+        /// </summary>
+        [DataMember(Name = "textSplit_splitLength")]
+        public int? TextSplit_SplitLength { get; set; } = null;
+
+        /// <summary>
         /// 获取或设置引擎数据字典，键为引擎ID。
         /// </summary>
         [DataMember(Name = "engineDataDic")]

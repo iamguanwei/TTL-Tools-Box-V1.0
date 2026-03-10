@@ -583,6 +583,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             清空已完成任务NToolStripMenuItem.Enabled = _voiceGenerationTaskQueue.Tasks.Any(t => t.Status == VoiceGenerationTaskStatus.已完成);
             清理临时文件MToolStripMenuItem.Enabled = false;
             转换为MP3PToolStripMenuItem.Enabled = false;
+            插队IToolStripMenuItem.Enabled = false;
 
             if (hasSelectedRows)
             {
@@ -643,6 +644,30 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                         (selectedTasks[0].Status == VoiceGenerationTaskStatus.未开始 ||
                          selectedTasks[0].Status == VoiceGenerationTaskStatus.排队中);
                     修改保存文件MToolStripMenuItem.Enabled = canModifySaveFile;
+
+                    if (isSingleSelection)
+                    {
+                        VoiceGenerationTask singleTask = selectedTasks[0];
+                        bool isQueued = singleTask.Status == VoiceGenerationTaskStatus.排队中;
+                        bool isFirstQueued = true;
+
+                        if (isQueued)
+                        {
+                            foreach (var t in _voiceGenerationTaskQueue.Tasks)
+                            {
+                                if (t.Status == VoiceGenerationTaskStatus.排队中)
+                                {
+                                    if (t != singleTask)
+                                    {
+                                        isFirstQueued = false;
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+
+                        插队IToolStripMenuItem.Enabled = isQueued && !isFirstQueued;
+                    }
                 }
             }
         }
@@ -929,6 +954,31 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                     deleteTasksAndCleanup(tasksToDelete);
                 }
             }
+        }
+
+        /// <summary>
+        /// 事件处理：点击"插队"菜单项。
+        /// </summary>
+        private void 插队IToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (dgv_语音生成_任务清单.SelectedRows.Count != 1)
+            {
+                return;
+            }
+
+            VoiceGenerationTask selectedTask = dgv_语音生成_任务清单.SelectedRows[0].DataBoundItem as VoiceGenerationTask;
+            if (selectedTask == null)
+            {
+                return;
+            }
+
+            if (selectedTask.Status != VoiceGenerationTaskStatus.排队中)
+            {
+                MessageBox.Show("只能对\"排队中\"状态的任务执行插队操作。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            _voiceGenerationTaskQueue.PrioritizeTask(selectedTask);
         }
 
         /// <summary>

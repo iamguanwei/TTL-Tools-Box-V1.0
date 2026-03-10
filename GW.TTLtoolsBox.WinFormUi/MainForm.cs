@@ -304,7 +304,8 @@ namespace GW.TTLtoolsBox.WinFormUi
         /// 加载指定项目文件。
         /// </summary>
         /// <param name="filePath">指定项目文件。</param>
-        private void loadProjectFile(string filePath)
+        /// <param name="loadSplitLengthFromSystemConfig">是否从系统配置加载拆分长度。</param>
+        private void loadProjectFile(string filePath, bool loadSplitLengthFromSystemConfig = false)
         {
             if (string.IsNullOrWhiteSpace(filePath) == false)
             {
@@ -314,7 +315,7 @@ namespace GW.TTLtoolsBox.WinFormUi
                     _projectFile = new ProjectFile(_currentProjectFilePath);
 
                     load角色映射PanelData();
-                    load文本拆分();
+                    load文本拆分(loadSplitLengthFromSystemConfig);
                     load多音字替换PanelData();
                     load角色和情绪指定PanelData();
                     load语音生成预处理PanelData();
@@ -410,6 +411,16 @@ namespace GW.TTLtoolsBox.WinFormUi
                 if (button == DialogResult.Yes)
                 {
                     filePath = 默认项目_文件;
+                    loadProjectFile(filePath, true);
+                    _isInitializing = false;
+                    _ttlSchemePanel?.StartTtlEngineConnectionIfSelected();
+                    load语音生成PanelData();
+
+                    if (!string.IsNullOrEmpty(_currentProjectFilePath) && File.Exists(_currentProjectFilePath))
+                    {
+                        addToRecentProjects(_currentProjectFilePath);
+                    }
+                    return;
                 }
                 else if (button == DialogResult.No)
                 {
@@ -417,7 +428,7 @@ namespace GW.TTLtoolsBox.WinFormUi
                     _isProjectModified = false;
                     _isSaveOnClose = true;
                     clearProjectContent();
-                    load文本拆分();
+                    load文本拆分(true);
                     _ttlSchemePanel?.StartTtlEngineConnectionIfSelected();
                     load语音生成PanelData();
                     updateTitleBar();
@@ -430,7 +441,7 @@ namespace GW.TTLtoolsBox.WinFormUi
                     _isProjectModified = false;
                     setProjectMenuEnabled(false);
                     clearProjectContent();
-                    load文本拆分();
+                    load文本拆分(true);
                     load语音生成PanelData();
                     updateTitleBar();
                     return;
@@ -592,7 +603,7 @@ namespace GW.TTLtoolsBox.WinFormUi
             _isProjectModified = false;
 
             clearProjectContent();
-            load文本拆分();
+            load文本拆分(false, true);
 
             updateTitleBar();
             _isSaveOnClose = true;
@@ -1094,12 +1105,14 @@ namespace GW.TTLtoolsBox.WinFormUi
         /// <summary>
         /// 加载文本拆分工作内容。
         /// </summary>
-        private void load文本拆分()
+        /// <param name="loadSplitLengthFromSystemConfig">是否从系统配置加载拆分长度。</param>
+        /// <param name="keepSplitLength">是否保持UI现有拆分长度值不变。</param>
+        private void load文本拆分(bool loadSplitLengthFromSystemConfig = false, bool keepSplitLength = false)
         {
             if (_textSplitPanel != null)
             {
                 _textSplitPanel.CurrentEngineId = getCurrentEngineId();
-                _textSplitPanel.LoadData(getProjectFile());
+                _textSplitPanel.LoadData(getProjectFile(), loadSplitLengthFromSystemConfig, keepSplitLength);
             }
         }
 
