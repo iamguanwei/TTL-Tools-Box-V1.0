@@ -71,8 +71,6 @@
     </Compile>
     <Compile Include="Helper\UiControlHelper.cs" />
     <Compile Include="Manager\RoleTextItem.cs" />
-    <Compile Include="Manager\TtlEngineConnectionStatus.cs" />
-    <Compile Include="Manager\TtlSchemeController.cs" />
     <Compile Include="Manager\VoiceGenerationTask.cs" />
     <Compile Include="Manager\VoiceGenerationTaskItem.cs" />
     <Compile Include="Manager\VoiceGenerationTaskQueue.cs" />

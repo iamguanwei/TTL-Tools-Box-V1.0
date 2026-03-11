@@ -50,12 +50,12 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
         /// <exception cref="Exception">连接失败时抛出异常</exception>
         public override async Task ConnectAsync()
         {
-            if (GetConnectionStatus() == ConnectionStatus.Connected)
+            if (GetConnectionStatus() == TtlEngineConnectionStatus.连接成功)
             {
                 return;
             }
 
-            OnConnectionStatusChanged(ConnectionStatus.Connecting, "Connecting to network TTL engine...");
+            OnConnectionStatusChanged(TtlEngineConnectionStatus.连接中, "Connecting to network TTL engine...");
 
             try
             {
@@ -64,12 +64,12 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
                     string baseUrl = GetBaseUrlFromParameters();
                     await _httpClient.GetAsync(baseUrl, cts.Token);
 
-                    OnConnectionStatusChanged(ConnectionStatus.Connected, "Connected to network TTL engine successfully");
+                    OnConnectionStatusChanged(TtlEngineConnectionStatus.连接成功, "Connected to network TTL engine successfully");
                 }
             }
             catch (Exception ex)
             {
-                OnConnectionStatusChanged(ConnectionStatus.Failed, $"Failed to connect: {ex.Message}", ex);
+                OnConnectionStatusChanged(TtlEngineConnectionStatus.连接失败, $"Failed to connect: {ex.Message}", ex);
                 throw;
             }
         }
@@ -81,19 +81,19 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
         /// <exception cref="Exception">断开连接失败时抛出异常</exception>
         public override async Task DisconnectAsync()
         {
-            if (GetConnectionStatus() == ConnectionStatus.Disconnected)
+            if (GetConnectionStatus() == TtlEngineConnectionStatus.未连接)
             {
                 return;
             }
 
             try
             {
-                OnConnectionStatusChanged(ConnectionStatus.Disconnected, "Disconnected from network TTL engine");
+                OnConnectionStatusChanged(TtlEngineConnectionStatus.未连接, "Disconnected from network TTL engine");
                 await Task.CompletedTask;
             }
             catch (Exception ex)
             {
-                OnConnectionStatusChanged(ConnectionStatus.Disconnected, $"Error during disconnect: {ex.Message}", ex);
+                OnConnectionStatusChanged(TtlEngineConnectionStatus.未连接, $"Error during disconnect: {ex.Message}", ex);
                 throw;
             }
         }

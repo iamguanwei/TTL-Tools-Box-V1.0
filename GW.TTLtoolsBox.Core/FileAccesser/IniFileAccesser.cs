@@ -222,6 +222,21 @@ namespace GW.TTLtoolsBox.Core.FileAccesser
             }
         }
 
+        /// <summary>
+        /// 获取所有配置键名。
+        /// </summary>
+        /// <returns>所有配置键名的数组。</returns>
+        public virtual string[] GetAllKeys()
+        {
+            load();
+            lock (_valueDic)
+            {
+                string[] keys = new string[_valueDic.Count];
+                _valueDic.Keys.CopyTo(keys, 0);
+                return keys;
+            }
+        }
+
         #endregion
 
         #endregion

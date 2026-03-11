@@ -77,7 +77,7 @@ namespace GW.TTLtoolsBox.WinFormUi
             init语音生成预处理Panel();
             init语音生成Panel();
 
-            _ttlSchemeController.EndInitializing();
+            _connectionManager.IsInitializing = false;
 
             _ttlSchemePanel?.StartTtlEngineConnectionIfSelected();
         }
@@ -106,9 +106,9 @@ namespace GW.TTLtoolsBox.WinFormUi
         private bool _isInitializing = true;
 
         /// <summary>
-        /// TTL方案控制器实例。
+        /// TTL引擎连接管理器实例。
         /// </summary>
-        private TtlSchemeController _ttlSchemeController = new TtlSchemeController();
+        private TtlEngineConnectionManager _connectionManager = new TtlEngineConnectionManager();
 
         /// <summary>
         /// TTL方案面板实例。
@@ -973,7 +973,7 @@ namespace GW.TTLtoolsBox.WinFormUi
             _ttlSchemePanel.Dock = DockStyle.Fill;
 
             // 设置面板依赖
-            _ttlSchemePanel.TtlSchemeController = _ttlSchemeController;
+            _ttlSchemePanel.ConnectionManager = _connectionManager;
             _ttlSchemePanel.PreviewVoiceManager = _previewVoiceManager;
             _ttlSchemePanel.ConnectionStatusLabel = this.tssl_TTL连接状态显示;
             _ttlSchemePanel.VoiceGenerationTabPage = this.tp_语音生成;
@@ -1040,6 +1040,10 @@ namespace GW.TTLtoolsBox.WinFormUi
             {
                 updateTtlEngineConnectionStatusLabel();
             };
+            _ttlSchemePanel.ConnectionSucceeded += (s, e) =>
+            {
+                _voicePreprocessPanel?.RefreshUi();
+            };
             _ttlSchemePanel.SetDefaultSpeakerRequested += (s, e) =>
             {
                 _voicePreprocessPanel?.SetDefaultSpeaker(e.Speaker);
@@ -1098,7 +1102,7 @@ namespace GW.TTLtoolsBox.WinFormUi
             if (_textSplitPanel != null)
             {
                 _textSplitPanel.CurrentEngineId = getCurrentEngineId();
-                _textSplitPanel.SaveData(getProjectFile());
+                _textSplitPanel.SaveData(getProjectFile(), isDefaultProjectFile());
             }
         }
 
@@ -1112,7 +1116,7 @@ namespace GW.TTLtoolsBox.WinFormUi
             if (_textSplitPanel != null)
             {
                 _textSplitPanel.CurrentEngineId = getCurrentEngineId();
-                _textSplitPanel.LoadData(getProjectFile(), loadSplitLengthFromSystemConfig, keepSplitLength);
+                _textSplitPanel.LoadData(getProjectFile(), loadSplitLengthFromSystemConfig, keepSplitLength, isDefaultProjectFile());
             }
         }
 
@@ -1127,7 +1131,7 @@ namespace GW.TTLtoolsBox.WinFormUi
         {
             _polyphonicReplacePanel = new PolyphonicReplacePanel();
             _polyphonicReplacePanel.Dock = DockStyle.Fill;
-            _polyphonicReplacePanel.TtlSchemeController = _ttlSchemeController;
+            _polyphonicReplacePanel.ConnectionManager = _connectionManager;
 
             _polyphonicReplacePanel.ProjectModified += (s, e) => markProjectModified();
             _polyphonicReplacePanel.SwitchToNextPageRequested += (s, e) => switchToNextPage(e.Text);
@@ -1175,10 +1179,10 @@ namespace GW.TTLtoolsBox.WinFormUi
         {
             _voiceGenerationPanel = new VoiceGenerationPanel();
             _voiceGenerationPanel.Dock = DockStyle.Fill;
-            _voiceGenerationPanel.TtlSchemeController = _ttlSchemeController;
+            _voiceGenerationPanel.ConnectionManager = _connectionManager;
             _voiceGenerationPanel.TempFolder = _tempFolder;
             _voiceGenerationPanel.FfmpegPath = Ffmpeg_文件;
-            _voiceGenerationPanel.GetEngineConnectionStatus = () => _ttlSchemeController?.ConnectionStatus ?? TtlEngineConnectionStatus.未连接;
+            _voiceGenerationPanel.GetEngineConnectionStatus = () => _connectionManager?.ConnectionStatus ?? TtlEngineConnectionStatus.未连接;
             _voiceGenerationPanel.RequestEngineConnection = () => checkAndConnectTtlEngineWhenTaskStarts();
             _voiceGenerationPanel.PlaySound = playSound;
             _voiceGenerationPanel.FindSpeaker = findSpeakerByShowName;
@@ -1242,7 +1246,7 @@ namespace GW.TTLtoolsBox.WinFormUi
         {
             _voicePreprocessPanel = new VoicePreprocessPanel();
             _voicePreprocessPanel.Dock = DockStyle.Fill;
-            _voicePreprocessPanel.TtlSchemeController = _ttlSchemeController;
+            _voicePreprocessPanel.ConnectionManager = _connectionManager;
             _voicePreprocessPanel.RoleMappingPanel = _roleMappingPanel;
 
             _voicePreprocessPanel.ProjectModified += (s, e) => markProjectModified();
@@ -1305,7 +1309,7 @@ namespace GW.TTLtoolsBox.WinFormUi
         {
             _roleMappingPanel = new RoleMappingPanel();
             _roleMappingPanel.Dock = DockStyle.Fill;
-            _roleMappingPanel.TtlSchemeController = _ttlSchemeController;
+            _roleMappingPanel.ConnectionManager = _connectionManager;
 
             _roleMappingPanel.ProjectModified += (s, e) => markProjectModified();
             _roleMappingPanel.RoleMappingListChanged += (s, e) => _roleEmotionPanel?.RefreshRoleList();
@@ -1368,7 +1372,7 @@ namespace GW.TTLtoolsBox.WinFormUi
         {
             _roleEmotionPanel = new RoleEmotionPanel();
             _roleEmotionPanel.Dock = DockStyle.Fill;
-            _roleEmotionPanel.TtlSchemeController = _ttlSchemeController;
+            _roleEmotionPanel.ConnectionManager = _connectionManager;
             _roleEmotionPanel.GetRoleNamesFunc = () => _roleMappingPanel?.GetRoleNames();
 
             _roleEmotionPanel.ProjectModified += (s, e) => markProjectModified();
@@ -1432,40 +1436,20 @@ namespace GW.TTLtoolsBox.WinFormUi
         {
             Action action = () =>
             {
-                var status = _ttlSchemePanel?.ConnectionStatus ?? TtlEngineConnectionStatus.未连接;
-                var countdown = _ttlSchemePanel?.ConnectionCountdown ?? 0;
-                var retryCountdown = _ttlSchemePanel?.RetryCountdown ?? 0;
-                var currentEngine = _ttlSchemeController?.CurrentEngineConnector;
-
-                string statusText = string.Empty;
-                Color statusColor = SystemColors.ControlText;
-
-                if (currentEngine == null)
+                string statusText = _connectionManager?.GetConnectionStatusText() ?? "未选择TTL引擎";
+                var status = _connectionManager?.ConnectionStatus ?? TtlEngineConnectionStatus.未连接;
+                Color statusColor;
+                switch (status)
                 {
-                    statusText = "未选择TTL引擎";
-                }
-                else
-                {
-                    switch (status)
-                    {
-                        case TtlEngineConnectionStatus.未连接:
-                            statusText = $"{currentEngine.Name}: 未连接";
-                            break;
-                        case TtlEngineConnectionStatus.连接中:
-                            statusText = $"{currentEngine.Name}: 连接中 ({countdown}秒)";
-                            break;
-                        case TtlEngineConnectionStatus.连接成功:
-                            statusText = $"{currentEngine.Name}: 已连接 ({retryCountdown}秒后验证)";
-                            statusColor = Color.FromArgb(0, 150, 0);
-                            break;
-                        case TtlEngineConnectionStatus.连接失败:
-                            statusText = $"{currentEngine.Name}: 连接失败 ({retryCountdown}秒后重试)";
-                            statusColor = Color.FromArgb(200, 0, 0);
-                            break;
-                        default:
-                            statusText = $"{currentEngine.Name}: 未连接";
-                            break;
-                    }
+                    case TtlEngineConnectionStatus.连接成功:
+                        statusColor = Color.FromArgb(0, 150, 0);
+                        break;
+                    case TtlEngineConnectionStatus.连接失败:
+                        statusColor = Color.FromArgb(200, 0, 0);
+                        break;
+                    default:
+                        statusColor = SystemColors.ControlText;
+                        break;
                 }
 
                 this.tssl_TTL连接状态显示.Text = statusText;
@@ -1672,7 +1656,7 @@ namespace GW.TTLtoolsBox.WinFormUi
         /// <returns>找到的SpeakerInfo对象，如果未找到则返回null</returns>
         private SpeakerInfo findSpeakerByShowName(string roleName)
         {
-            var currentEngine = _ttlSchemeController.CurrentEngineConnector;
+            var currentEngine = _connectionManager.CurrentEngine;
             if (string.IsNullOrEmpty(roleName) || currentEngine == null)
             {
                 return null;

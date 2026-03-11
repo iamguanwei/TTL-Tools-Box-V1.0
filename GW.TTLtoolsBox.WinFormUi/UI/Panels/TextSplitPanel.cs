@@ -120,13 +120,25 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// 保存面板数据到项目文件。
         /// </summary>
         /// <param name="projectFile">项目文件实例。</param>
-        public void SaveData(ProjectFile projectFile)
+        /// <param name="isDefaultProject">是否为默认项目文件。</param>
+        public void SaveData(ProjectFile projectFile, bool isDefaultProject = false)
         {
             if (projectFile != null)
             {
                 projectFile.TextSplit_OriginalText = this.tb_原始文本.Text;
                 projectFile.TextSplit_FinalText = this.tb_最终文本.Text;
                 projectFile.TextSplit_SplitLength = (int)this.nud_拆分长度.Value;
+
+                if (!isDefaultProject)
+                {
+                    projectFile.TextSplit_SplitBySentence = this.rb_拆分方式_按句子拆分.Checked;
+                    projectFile.TextSplit_IgnoreLineBreaks = this.cb_文本拆分_按句子拆分_忽略换行符.Checked;
+                }
+                else
+                {
+                    projectFile.TextSplit_SplitBySentence = null;
+                    projectFile.TextSplit_IgnoreLineBreaks = null;
+                }
             }
         }
 
@@ -136,7 +148,8 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// <param name="projectFile">项目文件实例。</param>
         /// <param name="loadFromSystemConfig">是否从系统配置加载拆分长度（默认为false）。</param>
         /// <param name="keepSplitLength">是否保持UI现有拆分长度值不变（默认为false）。</param>
-        public void LoadData(ProjectFile projectFile, bool loadFromSystemConfig = false, bool keepSplitLength = false)
+        /// <param name="isDefaultProject">是否为默认项目文件。</param>
+        public void LoadData(ProjectFile projectFile, bool loadFromSystemConfig = false, bool keepSplitLength = false, bool isDefaultProject = false)
         {
             if (projectFile != null)
             {
@@ -165,7 +178,38 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                         this.nud_拆分长度.Value = splitLength;
                     }
 
-                    this.cb_文本拆分_按句子拆分_忽略换行符.Checked = Setting.GetTextSplit_IgnoreLineBreaks(CurrentEngineId, true);
+                    bool splitBySentence = true;
+                    _isSplitBySentenceFromProject = false;
+
+                    if (!isDefaultProject && !loadFromSystemConfig && projectFile.TextSplit_SplitBySentence.HasValue)
+                    {
+                        splitBySentence = projectFile.TextSplit_SplitBySentence.Value;
+                        _isSplitBySentenceFromProject = true;
+                    }
+                    else
+                    {
+                        splitBySentence = Setting.GetTextSplit_SplitBySentence(CurrentEngineId, true);
+                        _isSplitBySentenceFromProject = false;
+                    }
+
+                    this.rb_拆分方式_按句子拆分.Checked = splitBySentence;
+                    this.rb_拆分参数_按对话拆分.Checked = !splitBySentence;
+
+                    bool ignoreLineBreaks = true;
+                    _isIgnoreLineBreaksFromProject = false;
+
+                    if (!isDefaultProject && !loadFromSystemConfig && projectFile.TextSplit_IgnoreLineBreaks.HasValue)
+                    {
+                        ignoreLineBreaks = projectFile.TextSplit_IgnoreLineBreaks.Value;
+                        _isIgnoreLineBreaksFromProject = true;
+                    }
+                    else
+                    {
+                        ignoreLineBreaks = Setting.GetTextSplit_IgnoreLineBreaks(CurrentEngineId, true);
+                        _isIgnoreLineBreaksFromProject = false;
+                    }
+
+                    this.cb_文本拆分_按句子拆分_忽略换行符.Checked = ignoreLineBreaks;
                 });
                 _isLoading = false;
             }
@@ -196,6 +240,16 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         private bool _isSplitLengthFromProject = false;
 
         /// <summary>
+        /// 拆分方式是否来自项目文件。
+        /// </summary>
+        private bool _isSplitBySentenceFromProject = false;
+
+        /// <summary>
+        /// 忽略换行符设置是否来自项目文件。
+        /// </summary>
+        private bool _isIgnoreLineBreaksFromProject = false;
+
+        /// <summary>
         /// 工具提示组件。
         /// </summary>
         private ToolTip _toolTip;
@@ -213,13 +267,13 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.tb_最终文本.MaxLength = int.MaxValue;
 
             this.rb_拆分方式_按句子拆分.Text += $" [ 切分符号 {整句_分割符号} ]";
-            this.rb_拆分方式_按句子拆分.Checked = bool.Parse(Setting.GetValue(this.rb_拆分方式_按句子拆分.Name, "true"));
+            this.rb_拆分方式_按句子拆分.Checked = true;
             this.nud_拆分长度.Value = 100;
 
             this.rb_拆分参数_按对话拆分.Text += $" [ {对话_分割符号} ]";
-            this.rb_拆分参数_按对话拆分.Checked = bool.Parse(Setting.GetValue(this.rb_拆分参数_按对话拆分.Name, "false"));
+            this.rb_拆分参数_按对话拆分.Checked = false;
 
-            this.cb_文本拆分_按句子拆分_忽略换行符.Checked = Setting.GetTextSplit_IgnoreLineBreaks(CurrentEngineId, true);
+            this.cb_文本拆分_按句子拆分_忽略换行符.Checked = true;
 
             this.nud_拆分长度.Minimum = 分割_最小长度;
             this.nud_拆分长度.Maximum = 100000;
@@ -445,9 +499,6 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// <param name="e">事件参数。</param>
         private void bt_开始拆分_Click(object sender, EventArgs e)
         {
-            Setting.SetValue(this.rb_拆分方式_按句子拆分.Name, this.rb_拆分方式_按句子拆分.Checked.ToString());
-            Setting.SetValue(this.rb_拆分参数_按对话拆分.Name, this.rb_拆分参数_按对话拆分.Checked.ToString());
-
             do拆分文本Job();
             refresh文本拆分Ui();
         }
@@ -489,6 +540,11 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// <param name="e">事件参数。</param>
         private void rb_拆分方式_CheckedChanged(object sender, EventArgs e)
         {
+            if (!_isLoading)
+            {
+                Setting.SetTextSplit_SplitBySentence(CurrentEngineId, this.rb_拆分方式_按句子拆分.Checked);
+                onProjectModified();
+            }
             refresh文本拆分Ui();
         }
 
@@ -516,6 +572,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             if (!_isLoading)
             {
                 Setting.SetTextSplit_IgnoreLineBreaks(CurrentEngineId, this.cb_文本拆分_按句子拆分_忽略换行符.Checked);
+                onProjectModified();
             }
         }
 

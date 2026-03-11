@@ -27,7 +27,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
     /// - 作为工作流的一部分，为后续语音生成提供角色映射
     /// 
     /// 依赖关系：
-    /// - 依赖TtlSchemeController获取当前引擎信息
+    /// - 依赖TtlEngineConnectionManager获取当前引擎信息
     /// - 依赖ProjectFile保存/加载映射数据
     /// - 依赖PreviewVoiceManager进行声音预览
     /// </remarks>
@@ -83,9 +83,9 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         public BindingList<RoleMappingItem> RoleMappingItems => _roleMappingItems;
 
         /// <summary>
-        /// 获取或设置TTL方案控制器。
+        /// 获取或设置TTL引擎连接管理器。
         /// </summary>
-        public TtlSchemeController TtlSchemeController { get; set; }
+        public TtlEngineConnectionManager ConnectionManager { get; set; }
 
         /// <summary>
         /// 获取或设置项目文件实例。
@@ -416,7 +416,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 sourceNameColumn.Items.Clear();
 
                 HashSet<string> availableSourceNames = new HashSet<string>();
-                var currentEngine = TtlSchemeController?.CurrentEngineConnector;
+                var currentEngine = ConnectionManager?.CurrentEngine;
                 if (currentEngine != null)
                 {
                     var speakers = currentEngine.Speakers;
@@ -622,7 +622,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                     string remark = string.Empty;
                     if (!string.IsNullOrWhiteSpace(sourceName))
                     {
-                        var currentEngine = TtlSchemeController?.CurrentEngineConnector;
+                        var currentEngine = ConnectionManager?.CurrentEngine;
                         if (currentEngine?.Speakers != null)
                         {
                             var speaker = currentEngine.Speakers.FirstOrDefault(s => s.SourceName == sourceName);

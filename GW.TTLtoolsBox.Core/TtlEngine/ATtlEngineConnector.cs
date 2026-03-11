@@ -149,7 +149,7 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
         /// 获取当前连接状态
         /// </summary>
         /// <returns>当前连接状态</returns>
-        public ConnectionStatus GetConnectionStatus()
+        public TtlEngineConnectionStatus GetConnectionStatus()
         {
             return _connectionStatus;
         }
@@ -161,6 +161,21 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
         public int GetQueueCount()
         {
             return _taskQueue.Count;
+        }
+
+        /// <summary>
+        /// 清空任务队列
+        /// </summary>
+        /// <returns>被清除的任务数量</returns>
+        public int ClearQueue()
+        {
+            int count = 0;
+            while (_taskQueue.TryDequeue(out var task))
+            {
+                task.TaskCompletionSource.TrySetCanceled();
+                count++;
+            }
+            return count;
         }
 
         /// <summary>
@@ -199,7 +214,7 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
             ValidateParameters(parameters);
             
             _parameters = parameters;
-            OnConnectionStatusChanged(ConnectionStatus.Disconnected, "Parameters changed");
+            OnConnectionStatusChanged(TtlEngineConnectionStatus.未连接, "Parameters changed");
         }
 
         /// <summary>
@@ -337,10 +352,10 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
         /// <exception cref="Exception">连接失败时抛出异常</exception>
         protected virtual async Task EnsureConnectionAsync()
         {
-            if (_connectionStatus != ConnectionStatus.Connected)
+            if (_connectionStatus != TtlEngineConnectionStatus.连接成功)
             {
                 await ConnectAsync();
-                if (_connectionStatus != ConnectionStatus.Connected)
+                if (_connectionStatus != TtlEngineConnectionStatus.连接成功)
                 {
                     throw new Exception("Failed to connect to TTL engine");
                 }
@@ -380,8 +395,8 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
         /// <param name="ex">异常信息</param>
         protected virtual void HandleTaskError(Exception ex)
         {
-            _connectionStatus = ConnectionStatus.Failed;
-            OnConnectionStatusChanged(ConnectionStatus.Failed, $"Error processing task: {ex.Message}", ex);
+            _connectionStatus = TtlEngineConnectionStatus.连接失败;
+            OnConnectionStatusChanged(TtlEngineConnectionStatus.连接失败, $"Error processing task: {ex.Message}", ex);
         }
 
         /// <summary>
@@ -471,7 +486,7 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
         /// <param name="status">连接状态</param>
         /// <param name="message">状态消息</param>
         /// <param name="error">错误信息（如果有）</param>
-        protected virtual void OnConnectionStatusChanged(ConnectionStatus status, string message, Exception error = null)
+        protected virtual void OnConnectionStatusChanged(TtlEngineConnectionStatus status, string message, Exception error = null)
         {
             _connectionStatus = status;
             ConnectionStatusChanged?.Invoke(this, new TtlEngineConnectionEventArgs(status, message, error));
@@ -502,7 +517,7 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
                 _remainingReconnectSeconds = _reconnectIntervalSeconds;
 
                 await ConnectAsync();
-                if (_connectionStatus == ConnectionStatus.Connected)
+                if (_connectionStatus == TtlEngineConnectionStatus.连接成功)
                 {
                     StopAutoReconnect();
                 }
@@ -536,7 +551,7 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
         /// <summary>
         /// 连接状态
         /// </summary>
-        private ConnectionStatus _connectionStatus = ConnectionStatus.Disconnected;
+        private TtlEngineConnectionStatus _connectionStatus = TtlEngineConnectionStatus.未连接;
 
         /// <summary>
         /// 任务队列

@@ -89,6 +89,24 @@ namespace GW.TTLtoolsBox.Core.FileAccesser
         }
 
         /// <summary>
+        /// 获取或设置文本拆分的拆分方式（true=按句子拆分，false=按对话拆分）。
+        /// </summary>
+        public bool? TextSplit_SplitBySentence
+        {
+            get { return _projectData.TextSplit_SplitBySentence; }
+            set { _projectData.TextSplit_SplitBySentence = value; }
+        }
+
+        /// <summary>
+        /// 获取或设置文本拆分是否忽略换行符。
+        /// </summary>
+        public bool? TextSplit_IgnoreLineBreaks
+        {
+            get { return _projectData.TextSplit_IgnoreLineBreaks; }
+            set { _projectData.TextSplit_IgnoreLineBreaks = value; }
+        }
+
+        /// <summary>
         /// 获取保存的文件名。
         /// </summary>
         public string FileName { get; private set; } = string.Empty;

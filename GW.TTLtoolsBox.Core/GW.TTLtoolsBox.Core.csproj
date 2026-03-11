@@ -66,7 +66,8 @@
     <Compile Include="TextSplit\TextSplitHelper.cs" />
     <Compile Include="TtlEngine\ANetworkTtlEngineConnector.cs" />
     <Compile Include="TtlEngine\ATtlEngineConnector.cs" />
-    <Compile Include="TtlEngine\ConnectionStatus.cs" />
+    <Compile Include="TtlEngine\TtlEngineConnectionStatus.cs" />
+    <Compile Include="TtlEngine\TtlEngineConnectionManager.cs" />
     <Compile Include="TtlEngine\CosyVoiceV3LYttlEngineConnector.cs" />
     <Compile Include="TtlEngine\Events\TtlEngineCompletedEventArgs.cs" />
     <Compile Include="TtlEngine\Events\TtlEngineConnectionEventArgs.cs" />

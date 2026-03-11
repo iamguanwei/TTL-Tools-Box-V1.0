@@ -12,7 +12,7 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
     /// 此接口用于抽象TTL引擎的连接和操作，支持不同类型的TTL引擎实现
     /// 主要功能包括：连接管理、文本发送、任务队列管理、状态监控等
     /// </remarks>
-    public interface ITtlEngineConnector
+    public interface ITtlEngineConnector : IDisposable
     {
         #region 方法
 
@@ -43,13 +43,19 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
         /// 获取当前连接状态
         /// </summary>
         /// <returns>当前连接状态</returns>
-        ConnectionStatus GetConnectionStatus();
+        TtlEngineConnectionStatus GetConnectionStatus();
 
         /// <summary>
         /// 获取当前队列中的任务数
         /// </summary>
         /// <returns>队列中的任务数</returns>
         int GetQueueCount();
+
+        /// <summary>
+        /// 清空任务队列
+        /// </summary>
+        /// <returns>被清除的任务数量</returns>
+        int ClearQueue();
 
         /// <summary>
         /// 启动自动重连

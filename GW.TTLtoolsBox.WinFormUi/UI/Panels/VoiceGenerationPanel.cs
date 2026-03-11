@@ -107,9 +107,9 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         public VoiceGenerationTaskQueue TaskQueue => _voiceGenerationTaskQueue;
 
         /// <summary>
-        /// 获取或设置TTL方案控制器。
+        /// 获取或设置TTL引擎连接管理器。
         /// </summary>
-        public TtlSchemeController TtlSchemeController { get; set; }
+        public TtlEngineConnectionManager ConnectionManager { get; set; }
 
         /// <summary>
         /// 获取或设置当前引擎ID。
@@ -322,7 +322,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         private void init语音生成Ui()
         {
             _voiceGenerationTaskQueue = new VoiceGenerationTaskQueue(
-                () => TtlSchemeController?.CurrentEngineConnector,
+                () => ConnectionManager?.CurrentEngine,
                 () => GetEngineConnectionStatus?.Invoke() ?? TtlEngineConnectionStatus.未连接,
                 FfmpegPath ?? Ffmpeg_文件,
                 _tempFolder);
@@ -1920,7 +1920,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                                                 {
                                                     string featureName = keyValue[0];
                                                     bool isKnownFeature = false;
-                                                    var currentEngine = TtlSchemeController?.CurrentEngineConnector;
+                                                    var currentEngine = ConnectionManager?.CurrentEngine;
                                                     if (currentEngine != null)
                                                     {
                                                         foreach (var def in currentEngine.FeatureDefinitions)
@@ -1964,7 +1964,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                                                     if (kv.Length == 2)
                                                     {
                                                         string fname = kv[0];
-                                                        var currentEngine2 = TtlSchemeController?.CurrentEngineConnector;
+                                                        var currentEngine2 = ConnectionManager?.CurrentEngine;
                                                         if (currentEngine2 != null)
                                                         {
                                                             foreach (var def in currentEngine2.FeatureDefinitions)
@@ -2089,7 +2089,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                                                 {
                                                     string featureName = keyValue[0];
                                                     bool isKnownFeature = false;
-                                                    var currentEngine = TtlSchemeController?.CurrentEngineConnector;
+                                                    var currentEngine = ConnectionManager?.CurrentEngine;
                                                     if (currentEngine != null)
                                                     {
                                                         foreach (var def in currentEngine.FeatureDefinitions)
@@ -2133,7 +2133,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                                                     if (kv.Length == 2)
                                                     {
                                                         string fname = kv[0];
-                                                        var currentEngine2 = TtlSchemeController?.CurrentEngineConnector;
+                                                        var currentEngine2 = ConnectionManager?.CurrentEngine;
                                                         if (currentEngine2 != null)
                                                         {
                                                             foreach (var def in currentEngine2.FeatureDefinitions)

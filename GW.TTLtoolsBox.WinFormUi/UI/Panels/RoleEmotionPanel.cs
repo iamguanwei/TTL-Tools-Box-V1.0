@@ -86,9 +86,9 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         #region 属性
 
         /// <summary>
-        /// 获取或设置TTL方案控制器。
+        /// 获取或设置TTL引擎连接管理器。
         /// </summary>
-        public TtlSchemeController TtlSchemeController { get; set; }
+        public TtlEngineConnectionManager ConnectionManager { get; set; }
 
         /// <summary>
         /// 获取或设置项目文件实例。
@@ -377,7 +377,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             dgv_角色和情绪指定.Columns.Add(roleColumn);
 
             // 动态添加特性列（在角色列和文本列之间）
-            var currentEngine = TtlSchemeController?.CurrentEngineConnector;
+            var currentEngine = ConnectionManager?.CurrentEngine;
             if (currentEngine != null)
             {
                 foreach (var featureDef in currentEngine.FeatureDefinitions)
@@ -1305,7 +1305,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             cms.Items.Add(setRoleMenuItem);
 
             // 添加特性菜单项（如果有特性定义）
-            var currentEngine = TtlSchemeController?.CurrentEngineConnector;
+            var currentEngine = ConnectionManager?.CurrentEngine;
             if (currentEngine != null && currentEngine.FeatureDefinitions.Length > 0)
             {
                 ToolStripMenuItem featureMenuItem = new ToolStripMenuItem("特性");

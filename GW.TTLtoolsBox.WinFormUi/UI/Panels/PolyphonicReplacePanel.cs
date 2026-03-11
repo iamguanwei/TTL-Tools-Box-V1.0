@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Windows.Forms;
 using GW.TTLtoolsBox.Core.PolyReplace;
 using GW.TTLtoolsBox.Core.FileAccesser;
+using GW.TTLtoolsBox.Core.TtlEngine;
 using GW.TTLtoolsBox.WinFormUi.Base;
 using GW.TTLtoolsBox.WinFormUi.Helper;
 using GW.TTLtoolsBox.WinFormUi.Manager;
@@ -73,9 +74,9 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         #region 属性
 
         /// <summary>
-        /// 获取或设置TTL方案控制器。
+        /// 获取或设置TTL引擎连接管理器。
         /// </summary>
-        public TtlSchemeController TtlSchemeController { get; set; }
+        public TtlEngineConnectionManager ConnectionManager { get; set; }
 
         /// <summary>
         /// 获取或设置项目文件实例。
@@ -322,7 +323,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 this.dgv_多音字方案.Enabled = !_do多音字替换Working;
                 this.bt_保存多音字方案.Enabled = this.bt_还原多音字方案.Enabled = this.dgv_多音字方案.Enabled && _dgv多音字方案表Changed;
 
-                var currentEngine = TtlSchemeController?.CurrentEngineConnector;
+                var currentEngine = ConnectionManager?.CurrentEngine;
                 if (currentEngine != null) this.cb_选择多音字方案.SelectedItem = currentEngine.PolyphonicScheme.ShowName;
                 this.cb_选择多音字方案.Enabled = !_do多音字替换Working && this.cb_选择多音字方案.Items.Count > 0 && currentEngine == null;
                 this.bt_开始替换最终文本中的多音字.Enabled =

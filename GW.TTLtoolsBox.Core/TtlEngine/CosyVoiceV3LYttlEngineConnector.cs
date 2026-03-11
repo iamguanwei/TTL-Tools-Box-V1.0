@@ -135,12 +135,12 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
         /// <exception cref="Exception">连接失败时抛出异常</exception>
         public override async Task ConnectAsync()
         {
-            if (GetConnectionStatus() == ConnectionStatus.Connected)
+            if (GetConnectionStatus() == TtlEngineConnectionStatus.连接成功)
             {
                 return;
             }
 
-            OnConnectionStatusChanged(ConnectionStatus.Connecting, "正在连接CosyVoice V3引擎...");
+            OnConnectionStatusChanged(TtlEngineConnectionStatus.连接中, "正在连接CosyVoice V3引擎...");
 
             try
             {
@@ -148,11 +148,11 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
 
                 UpdateSpeakers(speakerList);
 
-                OnConnectionStatusChanged(ConnectionStatus.Connected, "CosyVoice V3引擎连接成功");
+                OnConnectionStatusChanged(TtlEngineConnectionStatus.连接成功, "CosyVoice V3引擎连接成功");
             }
             catch (Exception ex)
             {
-                OnConnectionStatusChanged(ConnectionStatus.Failed, $"连接失败: {ex.Message}", ex);
+                OnConnectionStatusChanged(TtlEngineConnectionStatus.连接失败, $"连接失败: {ex.Message}", ex);
                 throw;
             }
         }

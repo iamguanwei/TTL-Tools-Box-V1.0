@@ -28,7 +28,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
     /// - 提供朗读者声音预览功能
     /// 
     /// 依赖关系：
-    /// - 依赖TtlSchemeController管理TTL引擎方案
+    /// - 依赖ConnectionManager管理TTL引擎方案
     /// - 依赖PreviewVoiceManager进行声音预览
     /// - 依赖VoiceGenerationTaskQueue管理语音生成任务
     /// </remarks>
@@ -135,9 +135,9 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         #region 属性
 
         /// <summary>
-        /// 获取或设置TTL方案控制器。
+        /// 获取或设置TTL引擎连接管理器。
         /// </summary>
-        public TtlSchemeController TtlSchemeController { get; set; }
+        public TtlEngineConnectionManager ConnectionManager { get; set; }
 
         /// <summary>
         /// 获取或设置预览声音管理器。
@@ -200,7 +200,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// <summary>
         /// 获取当前引擎ID。
         /// </summary>
-        public string CurrentEngineId => TtlSchemeController?.GetCurrentEngineId();
+        public string CurrentEngineId => ConnectionManager?.CurrentEngineId;
 
         /// <summary>
         /// 获取或设置连接状态标签控件。
@@ -212,6 +212,11 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// </summary>
         public TabPage VoiceGenerationTabPage { get; set; }
 
+        /// <summary>
+        /// 连接成功事件（从非成功状态变为成功状态时触发）
+        /// </summary>
+        public event EventHandler ConnectionSucceeded;
+
         #endregion
 
         #region 方法
@@ -221,55 +226,21 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// </summary>
         public void InitializePanel()
         {
-            initConnectionStatusTimer();
             initTTL方案Ui();
 
-            if (TtlSchemeController != null)
+            if (ConnectionManager != null)
             {
-                TtlSchemeController.ConnectionStatusChanged += TtlSchemeController_ConnectionStatusChanged;
-                TtlSchemeController.StartConnectionTimer();
+                ConnectionManager.ConnectionStatusChanged += ConnectionManager_ConnectionStatusChanged;
             }
         }
 
-        /// <summary>
-        /// 初始化连接状态定时器。
-        /// </summary>
-        private void initConnectionStatusTimer()
-        {
-            if (_connectionStatusTimer == null)
-            {
-                _connectionStatusTimer = new System.Windows.Forms.Timer();
-                _connectionStatusTimer.Interval = 1000;
-                _connectionStatusTimer.Tick += connectionStatusTimer_Tick;
-                _connectionStatusTimer.Start();
-            }
-        }
-
-        /// <summary>
-        /// 定时器回调：处理连接状态倒计时。
-        /// </summary>
-        private void connectionStatusTimer_Tick(object sender, EventArgs e)
-        {
-            handleConnectionStatusCountdown();
-        }
-
-        /// <summary>
-        /// 处理连接状态倒计时。
-        /// </summary>
-        private void handleConnectionStatusCountdown()
-        {
-            updateTtlEngineConnectionStatusLabel();
-            OnConnectionStatusChanged(_ttlEngineConnectionStatus, _ttlEngineConnectionCountdown, _ttlEngineRetryCountdown);
-        }
-
-        private void TtlSchemeController_ConnectionStatusChanged(object sender, TtlSchemeController.ConnectionStatusChangedEventArgs e)
+        private void ConnectionManager_ConnectionStatusChanged(object sender, TtlEngineConnectionManager.ConnectionStatusChangedEventArgs e)
         {
             _ttlEngineConnectionStatus = e.Status;
-            _ttlEngineConnectionCountdown = e.ConnectionCountdown;
-            _ttlEngineRetryCountdown = e.RetryCountdown;
+            _ttlEngineConnectionCountdown = e.Countdown;
 
             updateTtlEngineConnectionStatusLabel();
-            OnConnectionStatusChanged(e.Status, e.ConnectionCountdown, e.RetryCountdown);
+            OnConnectionStatusChanged(e.Status, e.Countdown);
 
             bool statusChangedToConnected = e.Status == TtlEngineConnectionStatus.连接成功
                 && _lastConnectionStatus != TtlEngineConnectionStatus.连接成功;
@@ -277,7 +248,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
 
             if (statusChangedToConnected)
             {
-                var currentEngine = TtlSchemeController?.CurrentEngineConnector;
+                var currentEngine = ConnectionManager?.CurrentEngine;
                 if (currentEngine != null)
                 {
                     if (currentEngine.Speakers == null || currentEngine.Speakers.Length == 0)
@@ -286,12 +257,22 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                     }
                     else
                     {
-                        bindSpeakersToGrid(currentEngine, true);
+                        this.Invoke(new Action(() => bindSpeakersToGrid(currentEngine, true)));
                     }
                 }
 
                 VoiceGenerationTaskQueue?.TryResume();
+                
+                OnConnectionSucceeded();
             }
+        }
+
+        /// <summary>
+        /// 触发连接成功事件。
+        /// </summary>
+        protected void OnConnectionSucceeded()
+        {
+            ConnectionSucceeded?.Invoke(this, EventArgs.Empty);
         }
 
         /// <summary>
@@ -376,23 +357,16 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// </summary>
         /// <param name="status">连接状态。</param>
         /// <param name="countdown">连接倒计时。</param>
-        /// <param name="retryCountdown">重试倒计时。</param>
-        public void SetConnectionStatus(TtlEngineConnectionStatus status, int countdown = 0, int retryCountdown = 0)
+        public void SetConnectionStatus(TtlEngineConnectionStatus status, int countdown = 0)
         {
             _ttlEngineConnectionStatus = status;
             _ttlEngineConnectionCountdown = countdown;
-            _ttlEngineRetryCountdown = retryCountdown;
         }
 
         /// <summary>
         /// 获取连接倒计时。
         /// </summary>
         public int ConnectionCountdown => _ttlEngineConnectionCountdown;
-
-        /// <summary>
-        /// 获取重试倒计时。
-        /// </summary>
-        public int RetryCountdown => _ttlEngineRetryCountdown;
 
         /// <summary>
         /// 刷新指定源名称的朗读者行。
@@ -408,7 +382,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// </summary>
         public void RefreshSpeakers()
         {
-            var currentEngine = TtlSchemeController?.CurrentEngineConnector;
+            var currentEngine = ConnectionManager?.CurrentEngine;
             if (currentEngine != null)
             {
                 createSpeakersFromRoles(currentEngine, true);
@@ -490,10 +464,9 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// </summary>
         /// <param name="status">连接状态。</param>
         /// <param name="countdown">倒计时。</param>
-        /// <param name="retryCountdown">重试倒计时。</param>
-        protected void OnConnectionStatusChanged(TtlEngineConnectionStatus status, int countdown, int retryCountdown)
+        protected void OnConnectionStatusChanged(TtlEngineConnectionStatus status, int countdown)
         {
-            ConnectionStatusChanged?.Invoke(this, new TtlEngineConnectionStatusEventArgs(status, countdown, retryCountdown));
+            ConnectionStatusChanged?.Invoke(this, new TtlEngineConnectionStatusEventArgs(status, countdown));
         }
 
         /// <summary>
@@ -565,19 +538,9 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         private int _ttlEngineConnectionCountdown = 0;
 
         /// <summary>
-        /// TTL引擎连接/重试倒计时（秒）。
-        /// </summary>
-        private int _ttlEngineRetryCountdown = 0;
-
-        /// <summary>
         /// 上一次的连接状态，用于检测状态变化。
         /// </summary>
         private TtlEngineConnectionStatus _lastConnectionStatus = TtlEngineConnectionStatus.未连接;
-
-        /// <summary>
-        /// 连接状态更新定时器。
-        /// </summary>
-        private System.Windows.Forms.Timer _connectionStatusTimer = null;
 
         /// <summary>
         /// 查找SpeakerInfo的委托。
@@ -612,7 +575,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
 
             // 当前方案
             {
-                TtlSchemeController?.Initialize();
+                ConnectionManager?.Initialize();
 
                 // 初始化下拉选项
                 this.cb_TTL方案_当前方案名称.Items.Clear();
@@ -621,11 +584,11 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 this.cb_TTL方案_当前方案名称.Items.Add("无");
 
                 // 添加所有可用的TTL引擎连接器名称，格式为"名称 [ID = id]"
-                if (TtlSchemeController != null)
+                if (ConnectionManager != null)
                 {
-                    foreach (var connector in TtlSchemeController.EngineConnectorArray)
+                    foreach (var connector in ConnectionManager.AllEngines)
                     {
-                        this.cb_TTL方案_当前方案名称.Items.Add(TtlSchemeController.GetEngineDisplayText(connector));
+                        this.cb_TTL方案_当前方案名称.Items.Add(ConnectionManager.GetEngineDisplayText(connector));
                     }
                 }
 
@@ -636,10 +599,10 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                     if (!string.IsNullOrEmpty(savedId))
                     {
                         // 根据ID查找对应的显示项
-                        var connector = TtlSchemeController?.EngineConnectorArray.FirstOrDefault(c => c.Id == savedId);
+                        var connector = ConnectionManager?.AllEngines.FirstOrDefault(c => c.Id == savedId);
                         if (connector != null)
                         {
-                            this.cb_TTL方案_当前方案名称.SelectedItem = TtlSchemeController.GetEngineDisplayText(connector);
+                            this.cb_TTL方案_当前方案名称.SelectedItem = ConnectionManager.GetEngineDisplayText(connector);
                         }
                         else
                         {
@@ -652,10 +615,10 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                         var oldName = Setting.GetValue(this.cb_TTL方案_当前方案名称.Name, string.Empty);
                         if (!string.IsNullOrEmpty(oldName))
                         {
-                            var connector = TtlSchemeController?.EngineConnectorArray.FirstOrDefault(c => c.Name == oldName);
+                            var connector = ConnectionManager?.AllEngines.FirstOrDefault(c => c.Name == oldName);
                             if (connector != null)
                             {
-                                this.cb_TTL方案_当前方案名称.SelectedItem = TtlSchemeController.GetEngineDisplayText(connector);
+                                this.cb_TTL方案_当前方案名称.SelectedItem = ConnectionManager.GetEngineDisplayText(connector);
                             }
                             else
                             {
@@ -672,9 +635,9 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
 
             // 配置
             {
-                if (TtlSchemeController != null)
+                if (ConnectionManager != null)
                 {
-                    TtlSchemeController.IsTtlEditing = false;
+                    ConnectionManager.IsTtlEditing = false;
                 }
             }
 
@@ -690,8 +653,8 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// </summary>
         private void refreshTTL方案Ui()
         {
-            var currentEngine = TtlSchemeController?.CurrentEngineConnector;
-            var isTtlEditing = TtlSchemeController?.IsTtlEditing ?? false;
+            var currentEngine = ConnectionManager?.CurrentEngine;
+            var isTtlEditing = ConnectionManager?.IsTtlEditing ?? false;
 
             {
                 this.cb_TTL方案_当前方案名称.Enabled = !isTtlEditing;
@@ -727,7 +690,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// </summary>
         private void startTtlEngineConnectionIfSelected()
         {
-            var currentEngine = TtlSchemeController?.CurrentEngineConnector;
+            var currentEngine = ConnectionManager?.CurrentEngine;
             if (currentEngine != null)
             {
                 _ttlEngineConnectionStatus = TtlEngineConnectionStatus.未连接;
@@ -746,19 +709,19 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// </summary>
         private async void start连接TTL引擎()
         {
-            var currentEngine = TtlSchemeController?.CurrentEngineConnector;
+            var currentEngine = ConnectionManager?.CurrentEngine;
             if (currentEngine == null)
             {
                 _ttlEngineConnectionStatus = TtlEngineConnectionStatus.未连接;
-                OnConnectionStatusChanged(_ttlEngineConnectionStatus, 0, 0);
+                OnConnectionStatusChanged(_ttlEngineConnectionStatus, 0);
                 updateTtlEngineConnectionStatusLabel();
                 refreshTTL方案Ui();
                 return;
             }
 
-            await TtlSchemeController.ConnectAsync();
+            await ConnectionManager.ConnectAsync();
 
-            if (TtlSchemeController.ConnectionStatus == TtlEngineConnectionStatus.连接成功)
+            if (ConnectionManager.ConnectionStatus == TtlEngineConnectionStatus.连接成功)
             {
                 VoiceGenerationTaskQueue?.TryResume();
             }
@@ -772,17 +735,17 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// </summary>
         private async void verifyTtlEngineConnectionSilently()
         {
-            var currentEngine = TtlSchemeController?.CurrentEngineConnector;
+            var currentEngine = ConnectionManager?.CurrentEngine;
             if (currentEngine == null)
             {
                 _ttlEngineConnectionStatus = TtlEngineConnectionStatus.未连接;
-                OnConnectionStatusChanged(_ttlEngineConnectionStatus, 0, 0);
+                OnConnectionStatusChanged(_ttlEngineConnectionStatus, 0);
                 updateTtlEngineConnectionStatusLabel();
                 refreshTTL方案Ui();
                 return;
             }
 
-            await TtlSchemeController.ConnectAsync();
+            await ConnectionManager.ConnectAsync();
 
             updateTtlEngineConnectionStatusLabel();
         }
@@ -794,36 +757,20 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         {
             Action action = () =>
             {
-                string statusText = string.Empty;
-                Color statusColor = SystemColors.ControlText;
-
-                var currentEngine = TtlSchemeController?.CurrentEngineConnector;
-                if (currentEngine == null)
+                string statusText = ConnectionManager?.GetConnectionStatusText() ?? "未选择TTL引擎";
+                var status = ConnectionManager?.ConnectionStatus ?? TtlEngineConnectionStatus.未连接;
+                Color statusColor;
+                switch (status)
                 {
-                    statusText = "未选择TTL引擎";
-                }
-                else
-                {
-                    switch (_ttlEngineConnectionStatus)
-                    {
-                        case TtlEngineConnectionStatus.未连接:
-                            statusText = $"{currentEngine.Name}: 未连接";
-                            break;
-                        case TtlEngineConnectionStatus.连接中:
-                            statusText = $"{currentEngine.Name}: 连接中 ({_ttlEngineConnectionCountdown}秒)";
-                            break;
-                        case TtlEngineConnectionStatus.连接成功:
-                            statusText = $"{currentEngine.Name}: 已连接 ({_ttlEngineRetryCountdown}秒后验证)";
-                            statusColor = Color.FromArgb(0, 150, 0);
-                            break;
-                        case TtlEngineConnectionStatus.连接失败:
-                            statusText = $"{currentEngine.Name}: 连接失败 ({_ttlEngineRetryCountdown}秒后重试)";
-                            statusColor = Color.FromArgb(200, 0, 0);
-                            break;
-                        default:
-                            statusText = $"{currentEngine.Name}: 未连接";
-                            break;
-                    }
+                    case TtlEngineConnectionStatus.连接成功:
+                        statusColor = Color.FromArgb(0, 150, 0);
+                        break;
+                    case TtlEngineConnectionStatus.连接失败:
+                        statusColor = Color.FromArgb(200, 0, 0);
+                        break;
+                    default:
+                        statusColor = SystemColors.ControlText;
+                        break;
                 }
 
                 if (ConnectionStatusLabel != null)
@@ -842,7 +789,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// <returns>当前TTL引擎的ID，或表示"无"方案的特定ID。</returns>
         private string getCurrentEngineId()
         {
-            return TtlSchemeController?.GetCurrentEngineId();
+            return ConnectionManager?.CurrentEngineId;
         }
 
         /// <summary>
@@ -889,6 +836,36 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// <param name="forceRefresh">是否强制刷新。</param>
         private void bindSpeakersToGrid(ITtlEngineConnector ttl, bool forceRefresh = false)
         {
+            var savedSpeakers = new Dictionary<string, SpeakerInfo>();
+            foreach (var k in Setting.GetAllKeys())
+            {
+                if (k.StartsWith($"Speaker_{ttl.Id}_"))
+                {
+                    string speakerName = k.Substring($"Speaker_{ttl.Id}_".Length);
+                    string savedValue = Setting.GetValue(k, string.Empty);
+                    if (!string.IsNullOrEmpty(savedValue))
+                    {
+                        var speaker = new SpeakerInfo(speakerName);
+                        if (speaker.TryFromString(savedValue))
+                        {
+                            savedSpeakers[speakerName] = speaker;
+                        }
+                    }
+                }
+            }
+
+            if (ttl.Speakers != null && savedSpeakers.Count > 0)
+            {
+                for (int i = 0; i < ttl.Speakers.Length; i++)
+                {
+                    var speaker = ttl.Speakers[i];
+                    if (savedSpeakers.TryGetValue(speaker.SourceName, out var savedSpeaker))
+                    {
+                        ttl.Speakers[i] = savedSpeaker;
+                    }
+                }
+            }
+
             var speakerArray = ttl.Speakers.Select(s => s.Clone()).ToArray();
 
             if (!forceRefresh && !hasSpeakerDataChanged(speakerArray))
@@ -1068,7 +1045,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// <param name="refreshStatus">是否先刷新预览状态，默认为false。</param>
         private void update自动生成全部朗读者预览音频按钮状态(bool refreshStatus = false)
         {
-            bool isTtlEditing = TtlSchemeController?.IsTtlEditing ?? false;
+            bool isTtlEditing = ConnectionManager?.IsTtlEditing ?? false;
             if (isTtlEditing)
             {
                 this.bt_TTL方案_自动生成全部朗读者预览音频.Enabled = false;
@@ -1250,10 +1227,10 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 return;
             }
 
-            var connector = TtlSchemeController?.EngineConnectorArray.FirstOrDefault(c => c.Id == engineId);
+            var connector = ConnectionManager?.AllEngines.FirstOrDefault(c => c.Id == engineId);
             if (connector != null)
             {
-                this.cb_TTL方案_当前方案名称.SelectedItem = TtlSchemeController.GetEngineDisplayText(connector);
+                this.cb_TTL方案_当前方案名称.SelectedItem = ConnectionManager.GetEngineDisplayText(connector);
             }
             else
             {
@@ -1273,10 +1250,10 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         private void cb_TTL方案_当前方案名称_SelectedIndexChanged(object sender, EventArgs e)
         {
             string selectedItem = this.cb_TTL方案_当前方案名称.SelectedItem?.ToString() ?? string.Empty;
-            ITtlEngineConnector ttl = TtlSchemeController?.FindEngineByDisplayText(selectedItem);
+            ITtlEngineConnector ttl = ConnectionManager?.FindEngineByDisplayText(selectedItem);
             string newEngineId = ttl?.Id ?? Constants.无_引擎标识;
 
-            string currentEngineId = TtlSchemeController?.GetCurrentEngineId() ?? Constants.无_引擎标识;
+            string currentEngineId = ConnectionManager?.CurrentEngineId ?? Constants.无_引擎标识;
             bool isEngineChanging = (currentEngineId != newEngineId);
 
             if (isEngineChanging && !IsInitializing() && hasActiveVoiceGenerationTasks())
@@ -1304,24 +1281,36 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             if (ttl != null)
             {
                 this.tb_TTL方案_当前方案详情.Text = ttl.Description;
-                this.tb_TTL方案_连接参数配置.Text = ttl.Parameters == null ? string.Empty : string.Join("\r\n", ttl.Parameters);
+                
+                string key = $"Params_{ttl.Id}";
+                string savedParams = Setting.GetValue(key, string.Empty);
+                if (!string.IsNullOrEmpty(savedParams))
+                {
+                    this.tb_TTL方案_连接参数配置.Text = savedParams;
+                    string[] parameters = savedParams.Split(new string[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries);
+                    ttl.SetParameters(parameters);
+                }
+                else
+                {
+                    this.tb_TTL方案_连接参数配置.Text = ttl.Parameters == null ? string.Empty : string.Join("\r\n", ttl.Parameters);
+                }
 
                 createSpeakersFromRoles(ttl);
             }
 
             Setting.SetValue($"{this.cb_TTL方案_当前方案名称.Name}_Id", ttl == null ? string.Empty : ttl.Id);
 
-            if (TtlSchemeController != null && TtlSchemeController.IsInitializing)
+            if (ConnectionManager != null && ConnectionManager.IsInitializing)
             {
-                TtlSchemeController.SelectEngine(ttl?.Id);
+                ConnectionManager.SelectEngine(ttl?.Id);
                 return;
             }
 
-            var previousEngine = TtlSchemeController?.CurrentEngineConnector;
+            var previousEngine = ConnectionManager?.CurrentEngine;
             string previousEngineId = previousEngine?.Id;
             if (string.IsNullOrEmpty(previousEngineId))
             {
-                previousEngineId = TtlSchemeController?.GetCurrentEngineId();
+                previousEngineId = ConnectionManager?.CurrentEngineId;
             }
 
             if (previousEngine?.Id != ttl?.Id)
@@ -1332,11 +1321,10 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
 
             // 如果选择"无"方案，传入无_引擎标识而不是null
             string engineIdToSelect = (ttl == null) ? Constants.无_引擎标识 : ttl.Id;
-            TtlSchemeController?.SelectEngine(engineIdToSelect);
+            ConnectionManager?.SelectEngine(engineIdToSelect);
 
             _ttlEngineConnectionStatus = TtlEngineConnectionStatus.未连接;
             _ttlEngineConnectionCountdown = 0;
-            _ttlEngineRetryCountdown = 0;
 
             if (ttl != null)
             {
@@ -1362,7 +1350,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// <returns>如果处于初始化阶段返回true，否则返回false。</returns>
         private bool IsInitializing()
         {
-            return TtlSchemeController?.IsInitializing ?? false;
+            return ConnectionManager?.IsInitializing ?? false;
         }
 
         /// <summary>
@@ -1372,9 +1360,9 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// <param name="e">事件参数。</param>
         private void bt_TTL方案_编辑配置_Click(object sender, EventArgs e)
         {
-            if (TtlSchemeController != null)
+            if (ConnectionManager != null)
             {
-                TtlSchemeController.IsTtlEditing = true;
+                ConnectionManager.IsTtlEditing = true;
             }
             refreshTTL方案Ui();
         }
@@ -1384,27 +1372,66 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// </summary>
         /// <param name="sender">发送者。</param>
         /// <param name="e">事件参数。</param>
-        private void bt_TTL方案_保存配置_Click(object sender, EventArgs e)
+        private async void bt_TTL方案_保存配置_Click(object sender, EventArgs e)
         {
-            var currentEngine = TtlSchemeController?.CurrentEngineConnector;
+            var currentEngine = ConnectionManager?.CurrentEngine;
             if (currentEngine != null)
             {
-                TtlSchemeController?.SaveEngineParameters(this.tb_TTL方案_连接参数配置.Text);
+                string[] parameters = this.tb_TTL方案_连接参数配置.Text.Split(new string[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries);
+                ConnectionManager?.SaveEngineParameters(parameters);
+
+                string key = $"Params_{currentEngine.Id}";
+                string value = this.tb_TTL方案_连接参数配置.Text;
+                Setting.SetValue(key, value);
 
                 if (this.dgv_TTL方案_朗读者参数配置.DataSource != null)
                 {
                     SpeakerInfo[] speakerArray = (SpeakerInfo[])this.dgv_TTL方案_朗读者参数配置.DataSource;
-                    TtlSchemeController?.SaveSpeakerParameters(speakerArray);
+                    for (int i = 0; i < speakerArray.Length && i < currentEngine.Speakers.Length; i++)
+                    {
+                        currentEngine.Speakers[i] = speakerArray[i];
+                    }
+
+                    var keysToRemove = new List<string>();
+                    foreach (var k in Setting.GetAllKeys())
+                    {
+                        if (k.StartsWith($"Speaker_{currentEngine.Id}_"))
+                        {
+                            keysToRemove.Add(k);
+                        }
+                    }
+                    foreach (var k in keysToRemove)
+                    {
+                        Setting.Remove(k);
+                    }
+
+                    foreach (var speaker in speakerArray)
+                    {
+                        string speakerKey = $"Speaker_{currentEngine.Id}_{speaker.SourceName}";
+                        Setting.SetValue(speakerKey, speaker.ToString());
+                    }
                 }
 
+                Setting.Save();
                 createSpeakersFromRoles(currentEngine);
             }
 
-            if (TtlSchemeController != null)
+            if (ConnectionManager != null)
             {
-                TtlSchemeController.IsTtlEditing = false;
+                ConnectionManager.IsTtlEditing = false;
             }
+            
             refreshTTL方案Ui();
+            
+            if (ConnectionManager != null)
+            {
+                var currentStatus = ConnectionManager.ConnectionStatus;
+                if (currentStatus == TtlEngineConnectionStatus.连接成功)
+                {
+                    await ConnectionManager.DisconnectAsync();
+                }
+                await ConnectionManager.ConnectAsync();
+            }
         }
 
         /// <summary>
@@ -1414,9 +1441,9 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// <param name="e">事件参数。</param>
         private void bt_TTL方案_还原配置_Click(object sender, EventArgs e)
         {
-            if (TtlSchemeController != null)
+            if (ConnectionManager != null)
             {
-                TtlSchemeController.IsTtlEditing = false;
+                ConnectionManager.IsTtlEditing = false;
             }
             cb_TTL方案_当前方案名称_SelectedIndexChanged(sender, e);
 
@@ -1430,7 +1457,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// <param name="e">事件参数。</param>
         private void bt_TTL方案_重新加载朗读者_Click(object sender, EventArgs e)
         {
-            var currentEngine = TtlSchemeController?.CurrentEngineConnector;
+            var currentEngine = ConnectionManager?.CurrentEngine;
             if (currentEngine != null)
             {
                 createSpeakersFromRoles(currentEngine, true);
@@ -1553,7 +1580,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 return;
             }
 
-            var currentEngine = TtlSchemeController?.CurrentEngineConnector;
+            var currentEngine = ConnectionManager?.CurrentEngine;
             if (currentEngine == null || currentEngine.Speakers == null)
             {
                 return;
@@ -1718,7 +1745,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                     }
 
                     bool hasSelection = this.dgv_TTL方案_朗读者参数配置.SelectedRows.Count > 0;
-                    bool isTtlEditing = TtlSchemeController?.IsTtlEditing ?? false;
+                    bool isTtlEditing = ConnectionManager?.IsTtlEditing ?? false;
 
                     this.设置为默认朗读者DToolStripMenuItem.Enabled = hasSelection && !isTtlEditing;
                     this.添加为角色RToolStripMenuItem.Enabled = hasSelection && !isTtlEditing;
@@ -1927,26 +1954,19 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         public TtlEngineConnectionStatus Status { get; }
 
         /// <summary>
-        /// 获取连接倒计时。
+        /// 获取倒计时。
         /// </summary>
         public int Countdown { get; }
-
-        /// <summary>
-        /// 获取重试倒计时。
-        /// </summary>
-        public int RetryCountdown { get; }
 
         /// <summary>
         /// 初始化TtlEngineConnectionStatusEventArgs类的新实例。
         /// </summary>
         /// <param name="status">连接状态。</param>
-        /// <param name="countdown">连接倒计时。</param>
-        /// <param name="retryCountdown">重试倒计时。</param>
-        public TtlEngineConnectionStatusEventArgs(TtlEngineConnectionStatus status, int countdown, int retryCountdown)
+        /// <param name="countdown">倒计时。</param>
+        public TtlEngineConnectionStatusEventArgs(TtlEngineConnectionStatus status, int countdown)
         {
             Status = status;
             Countdown = countdown;
-            RetryCountdown = retryCountdown;
         }
     }
 

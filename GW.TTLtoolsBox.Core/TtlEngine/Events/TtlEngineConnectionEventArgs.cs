@@ -17,7 +17,7 @@ namespace GW.TTLtoolsBox.Core.TtlEngine.Events
         /// <param name="status">连接状态</param>
         /// <param name="message">状态消息</param>
         /// <param name="error">错误信息（如果有）</param>
-        public TtlEngineConnectionEventArgs(ConnectionStatus status, string message, Exception error = null)
+        public TtlEngineConnectionEventArgs(TtlEngineConnectionStatus status, string message, Exception error = null)
         {
             Status = status;
             Message = message;
@@ -31,7 +31,7 @@ namespace GW.TTLtoolsBox.Core.TtlEngine.Events
         /// <summary>
         /// 获取连接状态
         /// </summary>
-        public ConnectionStatus Status { get; }
+        public TtlEngineConnectionStatus Status { get; }
 
         /// <summary>
         /// 获取状态消息

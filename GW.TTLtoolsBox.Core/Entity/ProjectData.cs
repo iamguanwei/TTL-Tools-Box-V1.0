@@ -59,6 +59,18 @@ namespace GW.TTLtoolsBox.Core.Entity
         public int? TextSplit_SplitLength { get; set; } = null;
 
         /// <summary>
+        /// 获取或设置文本拆分的拆分方式（true=按句子拆分，false=按对话拆分）。
+        /// </summary>
+        [DataMember(Name = "textSplit_splitBySentence")]
+        public bool? TextSplit_SplitBySentence { get; set; } = null;
+
+        /// <summary>
+        /// 获取或设置文本拆分是否忽略换行符。
+        /// </summary>
+        [DataMember(Name = "textSplit_ignoreLineBreaks")]
+        public bool? TextSplit_IgnoreLineBreaks { get; set; } = null;
+
+        /// <summary>
         /// 获取或设置引擎数据字典，键为引擎ID。
         /// </summary>
         [DataMember(Name = "engineDataDic")]

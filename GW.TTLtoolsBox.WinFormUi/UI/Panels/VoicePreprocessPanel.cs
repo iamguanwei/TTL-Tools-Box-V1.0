@@ -70,9 +70,9 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         #region 属性
 
         /// <summary>
-        /// 获取或设置TTL方案控制器。
+        /// 获取或设置TTL引擎连接管理器。
         /// </summary>
-        public TtlSchemeController TtlSchemeController { get; set; }
+        public TtlEngineConnectionManager ConnectionManager { get; set; }
 
         /// <summary>
         /// 获取或设置项目文件实例。
@@ -319,7 +319,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 this.bt_语音生成预处理_清理文本.Enabled = hasData;
                 this.bt_语音生成预处理_插入段落分隔符.Enabled = hasData;
 
-                var currentEngine = TtlSchemeController?.CurrentEngineConnector;
+                var currentEngine = ConnectionManager?.CurrentEngine;
                 bool hasSpeakers = currentEngine != null && currentEngine.Speakers != null && currentEngine.Speakers.Length > 0;
                 this.bt_语音生成预处理_发送到语音生成.Enabled = hasData && hasSpeakers;
 
@@ -412,7 +412,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             {
                 this.cb_语音生成预处理_默认朗读者设置.Items.Clear();
 
-                var currentEngine = TtlSchemeController?.CurrentEngineConnector;
+                var currentEngine = ConnectionManager?.CurrentEngine;
                 if (currentEngine != null)
                 {
                     var speakers = currentEngine.Speakers;
@@ -479,7 +479,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// <returns>源名称是否存在。</returns>
         private bool isSourceNameExists(string sourceName)
         {
-            var currentEngine = TtlSchemeController?.CurrentEngineConnector;
+            var currentEngine = ConnectionManager?.CurrentEngine;
             if (currentEngine == null || currentEngine.Speakers == null || string.IsNullOrWhiteSpace(sourceName))
             {
                 return false;

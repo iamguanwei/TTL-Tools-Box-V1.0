@@ -127,6 +127,15 @@ namespace GW.TTLtoolsBox.WinFormUi.Helper
         }
 
         /// <summary>
+        /// 获取所有配置键名。
+        /// </summary>
+        /// <returns>所有配置键名的数组。</returns>
+        public static string[] GetAllKeys()
+        {
+            return getIniFileHelper().GetAllKeys();
+        }
+
+        /// <summary>
         /// 保存语音生成任务列表到配置文件。
         /// </summary>
         /// <param name="engineId">TTL引擎ID。</param>
@@ -266,6 +275,41 @@ namespace GW.TTLtoolsBox.WinFormUi.Helper
             }
 
             string key = $"TextSplit_IgnoreLineBreaks_{engineId}";
+            SetValue(key, value);
+            Save();
+        }
+
+        /// <summary>
+        /// 获取文本拆分的拆分方式（true=按句子拆分，false=按对话拆分）。
+        /// </summary>
+        /// <param name="engineId">TTL引擎ID。</param>
+        /// <param name="defaultValue">默认值。</param>
+        /// <returns>是否按句子拆分。</returns>
+        public static bool GetTextSplit_SplitBySentence(string engineId, bool defaultValue = true)
+        {
+            if (string.IsNullOrEmpty(engineId))
+            {
+                return defaultValue;
+            }
+
+            string key = $"TextSplit_SplitBySentence_{engineId}";
+            string value = GetValue(key, defaultValue.ToString());
+            return bool.TryParse(value, out bool result) ? result : defaultValue;
+        }
+
+        /// <summary>
+        /// 设置文本拆分的拆分方式（true=按句子拆分，false=按对话拆分）。
+        /// </summary>
+        /// <param name="engineId">TTL引擎ID。</param>
+        /// <param name="value">是否按句子拆分。</param>
+        public static void SetTextSplit_SplitBySentence(string engineId, bool value)
+        {
+            if (string.IsNullOrEmpty(engineId))
+            {
+                return;
+            }
+
+            string key = $"TextSplit_SplitBySentence_{engineId}";
             SetValue(key, value);
             Save();
         }
