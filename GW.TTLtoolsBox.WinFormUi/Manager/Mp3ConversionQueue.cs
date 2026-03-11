@@ -313,7 +313,7 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
                 string mp3File = Path.Combine(Path.GetDirectoryName(wavFile), $"{Path.GetFileNameWithoutExtension(wavFile)}.mp3");
                 string inputFileName = Path.GetFileName(wavFile);
                 string outputFileName = Path.GetFileName(mp3File);
-                string ffmpegArgs = $"-i \"{inputFileName}\" -q:a 2 -acodec libmp3lame \"{outputFileName}\"";
+                string ffmpegArgs = $"-y -i \"{inputFileName}\" -q:a 2 -acodec libmp3lame \"{outputFileName}\"";
 
                 RunFFmpegCommand(ffmpegArgs, Path.GetDirectoryName(wavFile), cancellationToken).Wait();
 
@@ -410,10 +410,16 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
                             if (!process.HasExited)
                             {
                                 process.Kill();
+                                process.WaitForExit(1000);
                             }
                         }
                         catch { }
-                        tcs.TrySetCanceled();
+                        finally
+                        {
+                            outputWaitHandle.Set();
+                            errorWaitHandle.Set();
+                            tcs.TrySetCanceled();
+                        }
                     });
 
                     Task processTask = Task.Run(() =>
@@ -426,11 +432,17 @@ namespace GW.TTLtoolsBox.WinFormUi.Manager
 
                     await tcs.Task;
 
+                    process.CancelErrorRead();
+                    process.CancelOutputRead();
+
                     if (!cancellationToken.IsCancellationRequested && process.ExitCode != 0)
                     {
                         throw new Exception($"FFmpeg命令执行失败: {error.ToString()}");
                     }
                 }
+
+                process.Close();
+                await Task.Delay(100);
             }
         }
 

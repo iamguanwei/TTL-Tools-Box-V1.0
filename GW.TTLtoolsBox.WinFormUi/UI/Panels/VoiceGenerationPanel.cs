@@ -657,7 +657,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                             {
                                 if (t.Status == VoiceGenerationTaskStatus.排队中)
                                 {
-                                    if (t != singleTask)
+                                    if (t.Id != singleTask.Id)
                                     {
                                         isFirstQueued = false;
                                     }
@@ -800,7 +800,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
 
                 if (hasMp3ConversionTask)
                 {
-                    _mp3ConversionQueue.Stop();
+                    _mp3ConversionQueue.StopAndWait();
                 }
 
                 if (hasChanged || hasMp3ConversionTask)
