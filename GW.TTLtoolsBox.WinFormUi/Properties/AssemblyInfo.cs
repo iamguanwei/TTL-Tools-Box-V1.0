@@ -29,5 +29,5 @@ using System.Runtime.InteropServices;
 //      生成号
 //      修订号
 //
-[assembly: AssemblyVersion("1.1.20.15")]
-[assembly: AssemblyFileVersion("1.1.20.15")]
+[assembly: AssemblyVersion("1.1.21.15")]
+[assembly: AssemblyFileVersion("1.1.21.15")]

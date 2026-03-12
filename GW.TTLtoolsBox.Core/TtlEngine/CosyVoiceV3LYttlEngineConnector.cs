@@ -85,7 +85,7 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
         /// </summary>
         public override string Description
         {
-            get { return "刘悦的 CosyVoice V3 TTL引擎服务（刘悦的技术博客(B站/Youtube 同名) https://t.zsxq.com/IrQPr）\n支持特性：方言、情感风格、场景"; }
+            get { return "刘悦的 CosyVoice V3 TTL引擎服务（刘悦的技术博客(B站/Youtube 同名) https://t.zsxq.com/IrQPr）\n支持特性：方言、情感风格、场景、语速、音量"; }
         }
 
         /// <summary>
@@ -125,7 +125,9 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
         {
             new TtlEngineFeatureDefinition("方言", typeof(DialectFeature), "请用{0}表达。"),
             new TtlEngineFeatureDefinition("情感风格", typeof(EmotionFeature), "请用{0}表达。"),
-            new TtlEngineFeatureDefinition("场景", typeof(SceneFeature), "请用{0}表达。")
+            new TtlEngineFeatureDefinition("场景", typeof(SceneFeature), "请用{0}表达。"),
+            new TtlEngineFeatureDefinition("语速", typeof(SpeedFeature), "请用{0}表达。"),
+            new TtlEngineFeatureDefinition("音量", typeof(VolumeFeature), "请用{0}表达。")
         };
 
         /// <summary>

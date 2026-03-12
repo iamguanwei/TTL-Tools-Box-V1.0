@@ -822,9 +822,14 @@ namespace GW.TTLtoolsBox.WinFormUi
         #region UI操作
 
         /// <summary>
-        /// 软件版本号。
+        /// 软件版本号（UI）。
         /// </summary>
-        private static readonly string _软件版本 = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
+        private static readonly string _软件版本UI = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
+
+        /// <summary>
+        /// 软件版本号（Core）。
+        /// </summary>
+        private static readonly string _软件版本Core = typeof(GW.TTLtoolsBox.Core.TtlEngine.ITtlEngineConnector).Assembly.GetName().Version.ToString();
 
         /// <summary>
         /// 初始化主UI。
@@ -893,7 +898,7 @@ namespace GW.TTLtoolsBox.WinFormUi
                 projectFileName = Path.GetFileName(_currentProjectFilePath);
             }
 
-            this.Text = $"TTL 工具箱 {_软件版本} - {modifiedMark}{projectFileName}";
+            this.Text = $"TTL 工具箱 UI v{_软件版本UI} / Core v{_软件版本Core} - {modifiedMark}{projectFileName}";
         }
 
         /// <summary>

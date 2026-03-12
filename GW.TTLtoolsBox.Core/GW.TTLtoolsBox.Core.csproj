@@ -78,6 +78,8 @@
     <Compile Include="TtlEngine\Features\DialectFeature.cs" />
     <Compile Include="TtlEngine\Features\EmotionFeature.cs" />
     <Compile Include="TtlEngine\Features\SceneFeature.cs" />
+    <Compile Include="TtlEngine\Features\SpeedFeature.cs" />
+    <Compile Include="TtlEngine\Features\VolumeFeature.cs" />
     <Compile Include="TtlEngine\Helper\MD5Helper.cs" />
     <Compile Include="TtlEngine\IndexTTLv2LYttlEngineConnector.cs" />
     <Compile Include="TtlEngine\ITtlEngineConnector.cs" />
