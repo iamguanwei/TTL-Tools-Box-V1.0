@@ -148,7 +148,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// </summary>
         public void LoadDefaultSpeakerSettings()
         {
-            load语音生成预处理默认角色设置();
+            refresh默认朗读者Options();
         }
 
         /// <summary>
@@ -192,8 +192,8 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 {
                     for (int i = 0; i < this.cb_语音生成预处理_默认朗读者设置.Items.Count; i++)
                     {
-                        if (this.cb_语音生成预处理_默认朗读者设置.Items[i] is SpeakerInfo item
-                            && item.SourceName == speaker.SourceName)
+                        if (this.cb_语音生成预处理_默认朗读者设置.Items[i] is string item
+                            && item == speaker.SourceName)
                         {
                             this.cb_语音生成预处理_默认朗读者设置.SelectedIndex = i;
                             break;
@@ -243,6 +243,15 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         #endregion
 
         #region private
+
+        #region 字段
+
+        /// <summary>
+        /// 默认朗读者是否已丢失。
+        /// </summary>
+        private bool _isDefaultSpeakerLost = false;
+
+        #endregion
 
         #region UI初始化
 
@@ -319,9 +328,8 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 this.bt_语音生成预处理_清理文本.Enabled = hasData;
                 this.bt_语音生成预处理_插入段落分隔符.Enabled = hasData;
 
-                var currentEngine = ConnectionManager?.CurrentEngine;
-                bool hasSpeakers = currentEngine != null && currentEngine.Speakers != null && currentEngine.Speakers.Length > 0;
-                this.bt_语音生成预处理_发送到语音生成.Enabled = hasData && hasSpeakers;
+                bool hasValidSpeaker = !string.IsNullOrWhiteSpace(this.cb_语音生成预处理_默认朗读者设置.Text) && !_isDefaultSpeakerLost;
+                this.bt_语音生成预处理_发送到语音生成.Enabled = hasData && hasValidSpeaker;
 
                 string text = this.tb_语音生成预处理_最终文本.Text;
                 int taskCount = 0;
@@ -397,21 +405,23 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 }
 
                 load语音生成预处理配置();
-                load语音生成预处理默认角色设置();
+                refresh默认朗读者Options();
             };
 
             UpdateUi(act);
         }
 
         /// <summary>
-        /// 加载语音生成预处理默认角色设置。
+        /// 刷新默认朗读者下拉列表选项。
         /// </summary>
-        private void load语音生成预处理默认角色设置()
+        private void refresh默认朗读者Options()
         {
             Action act = () =>
             {
                 this.cb_语音生成预处理_默认朗读者设置.Items.Clear();
+                _isDefaultSpeakerLost = false;
 
+                HashSet<string> availableSourceNames = new HashSet<string>();
                 var currentEngine = ConnectionManager?.CurrentEngine;
                 if (currentEngine != null)
                 {
@@ -420,33 +430,60 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                     {
                         foreach (var speaker in speakers)
                         {
-                            this.cb_语音生成预处理_默认朗读者设置.Items.Add(speaker);
-                        }
-
-                        string savedSourceName = string.Empty;
-                        if (ProjectFile != null && !string.IsNullOrEmpty(CurrentEngineId))
-                        {
-                            savedSourceName = ProjectFile.GetVoicePreprocess_DefaultSpeaker(CurrentEngineId);
-                        }
-
-                        if (!string.IsNullOrWhiteSpace(savedSourceName))
-                        {
-                            var savedSpeaker = speakers.FirstOrDefault(s => s.SourceName == savedSourceName);
-                            if (savedSpeaker != null)
-                            {
-                                this.cb_语音生成预处理_默认朗读者设置.SelectedItem = savedSpeaker;
-                            }
-                            else
-                            {
-                                this.cb_语音生成预处理_默认朗读者设置.SelectedIndex = 0;
-                            }
-                        }
-                        else
-                        {
-                            this.cb_语音生成预处理_默认朗读者设置.SelectedIndex = 0;
+                            this.cb_语音生成预处理_默认朗读者设置.Items.Add(speaker.SourceName);
+                            availableSourceNames.Add(speaker.SourceName);
                         }
                     }
                 }
+
+                string savedSpeakerName = string.Empty;
+                if (ProjectFile != null && !string.IsNullOrEmpty(CurrentEngineId))
+                {
+                    savedSpeakerName = ProjectFile.GetVoicePreprocess_DefaultSpeaker(CurrentEngineId);
+                }
+
+                string baseSpeakerName = savedSpeakerName;
+                bool hasLostSuffix = !string.IsNullOrEmpty(savedSpeakerName) && savedSpeakerName.EndsWith(已丢失_标识后缀);
+                if (hasLostSuffix)
+                {
+                    baseSpeakerName = savedSpeakerName.Substring(0, savedSpeakerName.Length - 已丢失_标识后缀.Length);
+                }
+
+                if (!string.IsNullOrWhiteSpace(baseSpeakerName))
+                {
+                    if (availableSourceNames.Contains(baseSpeakerName))
+                    {
+                        this.cb_语音生成预处理_默认朗读者设置.SelectedItem = baseSpeakerName;
+                        _isDefaultSpeakerLost = false;
+
+                        if (hasLostSuffix)
+                        {
+                            ProjectFile?.SetVoicePreprocess_DefaultSpeaker(CurrentEngineId, baseSpeakerName);
+                        }
+                    }
+                    else
+                    {
+                        string lostName = baseSpeakerName + 已丢失_标识后缀;
+                        this.cb_语音生成预处理_默认朗读者设置.Items.Add(lostName);
+                        this.cb_语音生成预处理_默认朗读者设置.SelectedItem = lostName;
+                        _isDefaultSpeakerLost = true;
+
+                        if (!hasLostSuffix)
+                        {
+                            ProjectFile?.SetVoicePreprocess_DefaultSpeaker(CurrentEngineId, lostName);
+                        }
+                    }
+                }
+                else
+                {
+                    if (this.cb_语音生成预处理_默认朗读者设置.Items.Count > 0)
+                    {
+                        this.cb_语音生成预处理_默认朗读者设置.SelectedIndex = 0;
+                    }
+                    _isDefaultSpeakerLost = false;
+                }
+
+                refresh语音生成预处理Ui();
             };
 
             UpdateUi(act);
@@ -572,9 +609,10 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             {
                 if (string.IsNullOrWhiteSpace(this.tb_语音生成预处理_最终文本.Text) == false)
                 {
-                    if (this.cb_语音生成预处理_默认朗读者设置.SelectedItem is SpeakerInfo defaultSpeaker)
+                    string selectedSpeaker = this.cb_语音生成预处理_默认朗读者设置.SelectedItem as string;
+                    if (!string.IsNullOrWhiteSpace(selectedSpeaker) && !selectedSpeaker.EndsWith(已丢失_标识后缀))
                     {
-                        string defaultRole = defaultSpeaker.SourceName;
+                        string defaultRole = selectedSpeaker;
 
                         saveFileDialog.Title = "选择保存文件";
                         saveFileDialog.Filter = "wav文件|*.wav|mp3文件|*.mp3";
@@ -751,11 +789,20 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// <param name="e">事件参数。</param>
         private void cb_语音生成预处理_默认角色设置_SelectedIndexChanged(object sender, EventArgs e)
         {
-            if (ProjectFile != null && !string.IsNullOrEmpty(CurrentEngineId) && this.cb_语音生成预处理_默认朗读者设置.SelectedItem is SpeakerInfo speaker)
+            string selectedSpeaker = this.cb_语音生成预处理_默认朗读者设置.SelectedItem as string;
+
+            if (!string.IsNullOrWhiteSpace(selectedSpeaker) && !selectedSpeaker.EndsWith(已丢失_标识后缀))
             {
-                ProjectFile.SetVoicePreprocess_DefaultSpeaker(CurrentEngineId, speaker.SourceName);
-                OnProjectModified();
+                _isDefaultSpeakerLost = false;
+
+                if (ProjectFile != null && !string.IsNullOrEmpty(CurrentEngineId))
+                {
+                    ProjectFile.SetVoicePreprocess_DefaultSpeaker(CurrentEngineId, selectedSpeaker);
+                    OnProjectModified();
+                }
             }
+
+            refresh语音生成预处理Ui();
         }
 
         /// <summary>
@@ -779,15 +826,15 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         }
 
         /// <summary>
-        /// 事件处理：默认朗读者下拉列表格式化显示，只显示源名称。
+        /// 事件处理：默认朗读者下拉列表格式化显示。
         /// </summary>
         /// <param name="sender">发送者。</param>
         /// <param name="e">事件参数。</param>
         private void cb_语音生成预处理_默认朗读者设置_Format(object sender, ListControlConvertEventArgs e)
         {
-            if (e.ListItem is SpeakerInfo speaker)
+            if (e.ListItem is string sourceName)
             {
-                e.Value = speaker.SourceName;
+                e.Value = sourceName;
             }
         }
 
