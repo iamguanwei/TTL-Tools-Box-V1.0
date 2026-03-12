@@ -176,6 +176,8 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
             string previousEngineId = _currentEngine?.Id ?? string.Empty;
             var previousEngine = _currentEngine;
 
+            StopReconnectTimer();
+
             if (previousEngine != null)
             {
                 await DisconnectEngineAsync(previousEngine);
@@ -208,6 +210,21 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
             if (_currentEngine == null)
             {
                 UpdateConnectionStatus(TtlEngineConnectionStatus.未连接);
+                StartReconnectTimer();
+                return;
+            }
+
+            if (_connectionStatus == TtlEngineConnectionStatus.连接中)
+            {
+                return;
+            }
+
+            var engineStatus = _currentEngine.GetConnectionStatus();
+            if (engineStatus == TtlEngineConnectionStatus.连接成功)
+            {
+                UpdateConnectionStatus(TtlEngineConnectionStatus.连接成功);
+                _reconnectCountdown = VerifyIntervalSeconds;
+                StartVerifyTimer();
                 return;
             }
 
@@ -219,7 +236,22 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
 
             try
             {
-                await _currentEngine.ConnectAsync();
+                var timeoutTask = Task.Delay(TimeSpan.FromSeconds(ConnectionTimeoutSeconds), _connectionCts.Token);
+                var connectTask = _currentEngine.ConnectAsync();
+
+                var completedTask = await Task.WhenAny(connectTask, timeoutTask);
+
+                if (completedTask == timeoutTask)
+                {
+                    _connectionCts.Cancel();
+                    UpdateConnectionStatus(TtlEngineConnectionStatus.连接失败, "连接超时");
+                    StartReconnectTimer();
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                UpdateConnectionStatus(TtlEngineConnectionStatus.连接失败, "连接被取消");
+                StartReconnectTimer();
             }
             catch (Exception ex)
             {
@@ -457,6 +489,11 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
                 _reconnectCountdown = ReconnectIntervalSeconds;
                 StartReconnectTimer();
             }
+            else if (e.Status == TtlEngineConnectionStatus.未连接)
+            {
+                _reconnectCountdown = ReconnectIntervalSeconds;
+                StartReconnectTimer();
+            }
         }
 
         private void UpdateConnectionStatus(TtlEngineConnectionStatus status, string message = null)
@@ -505,6 +542,14 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
                 else if (_connectionStatus == TtlEngineConnectionStatus.连接成功)
                 {
                     _ = ConnectAsync();
+                }
+                else if (_connectionStatus == TtlEngineConnectionStatus.未连接)
+                {
+                    _ = ConnectAsync();
+                }
+                else if (_connectionStatus == TtlEngineConnectionStatus.连接中)
+                {
+                    StartReconnectTimer();
                 }
             }
         }
