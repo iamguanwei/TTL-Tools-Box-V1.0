@@ -51,6 +51,27 @@ namespace GW.TTLtoolsBox.Core.TtlEngine.Features
         /// </summary>
         [Description("生气")]
         [FeatureOption("生气的语气")]
-        生气 = 5
+        生气 = 5,
+
+        /// <summary>
+        /// 害怕
+        /// </summary>
+        [Description("害怕")]
+        [FeatureOption("害怕的语气")]
+        害怕 = 6,
+
+        /// <summary>
+        /// 紧张
+        /// </summary>
+        [Description("紧张")]
+        [FeatureOption("紧张的语气")]
+        紧张 = 7,
+
+        /// <summary>
+        /// 低落
+        /// </summary>
+        [Description("低落")]
+        [FeatureOption("低落的语气")]
+        低落 = 8
     }
 }

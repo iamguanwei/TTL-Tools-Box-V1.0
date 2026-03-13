@@ -44,6 +44,20 @@ namespace GW.TTLtoolsBox.Core.TtlEngine.Features
         /// </summary>
         [Description("朗诵")]
         [FeatureOption("朗诵的语气")]
-        朗诵 = 4
+        朗诵 = 4,
+
+        /// <summary>
+        /// 聊天
+        /// </summary>
+        [Description("聊天")]
+        [FeatureOption("聊天的语气")]
+        聊天 = 5,
+
+        /// <summary>
+        /// 谈话
+        /// </summary>
+        [Description("谈话")]
+        [FeatureOption("谈话的语气")]
+        谈话 = 6
     }
 }
