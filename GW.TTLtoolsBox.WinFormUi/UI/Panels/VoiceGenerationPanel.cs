@@ -2311,6 +2311,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                         voiceTask.Status == VoiceGenerationTaskStatus.排队中)
                     {
                         voiceTask.Status = VoiceGenerationTaskStatus.排队中;
+                        voiceTask.ProgressDetail = "等待TTL引擎连接...";
                         hasInterruptedTask = true;
                     }
 
