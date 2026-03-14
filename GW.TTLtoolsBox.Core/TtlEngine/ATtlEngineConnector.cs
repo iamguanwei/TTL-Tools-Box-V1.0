@@ -86,7 +86,7 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
         /// <summary>
         /// 获取当前引擎所使用的多音字方案
         /// </summary>
-        public abstract IPolyphonicScheme PolyphonicScheme { get; }
+        public abstract IPolyphonicScheme[] PolyphonicSchemes { get; }
 
         /// <summary>
         /// 获取连接器的名称
@@ -130,9 +130,15 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
                 parameters.Text = text;
             }
 
-            if (EnablePolyphonicReplace && PolyphonicScheme != null && !string.IsNullOrEmpty(parameters.Text))
+            if (EnablePolyphonicReplace && PolyphonicSchemes != null && PolyphonicSchemes.Length > 0 && !string.IsNullOrEmpty(parameters.Text))
             {
-                parameters.Text = PolyphonicScheme.Replace(parameters.Text);
+                foreach (var scheme in PolyphonicSchemes)
+                {
+                    if (scheme != null)
+                    {
+                        parameters.Text = scheme.Replace(parameters.Text);
+                    }
+                }
             }
 
             var task = new TtlEngineTask(parameters);

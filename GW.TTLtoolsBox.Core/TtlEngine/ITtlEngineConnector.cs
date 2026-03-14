@@ -90,7 +90,7 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
         /// <summary>
         /// 获取当前引擎所使用的多音字方案
         /// </summary>
-        IPolyphonicScheme PolyphonicScheme { get; }
+        IPolyphonicScheme[] PolyphonicSchemes { get; }
 
         /// <summary>
         /// 获取连接器的名称

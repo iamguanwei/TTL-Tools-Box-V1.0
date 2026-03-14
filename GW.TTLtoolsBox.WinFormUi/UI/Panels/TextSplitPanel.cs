@@ -133,6 +133,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 {
                     projectFile.TextSplit_SplitBySentence = this.rb_拆分方式_按句子拆分.Checked;
                     projectFile.TextSplit_IgnoreLineBreaks = this.cb_文本拆分_按句子拆分_忽略换行符.Checked;
+                    projectFile.TextSplit_KeepDialogIntact = this.cb_文本拆分_按句子拆分_对话不拆分.Checked;
                 }
                 else
                 {
@@ -210,6 +211,22 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                     }
 
                     this.cb_文本拆分_按句子拆分_忽略换行符.Checked = ignoreLineBreaks;
+
+                    bool keepDialogIntact = true;
+                    _isKeepDialogIntactFromProject = false;
+
+                    if (!isDefaultProject && !loadFromSystemConfig && projectFile.TextSplit_KeepDialogIntact.HasValue)
+                    {
+                        keepDialogIntact = projectFile.TextSplit_KeepDialogIntact.Value;
+                        _isKeepDialogIntactFromProject = true;
+                    }
+                    else
+                    {
+                        keepDialogIntact = Setting.GetTextSplit_KeepDialogIntact(CurrentEngineId, true);
+                        _isKeepDialogIntactFromProject = false;
+                    }
+
+                    this.cb_文本拆分_按句子拆分_对话不拆分.Checked = keepDialogIntact;
                 });
                 _isLoading = false;
             }
@@ -250,6 +267,11 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         private bool _isIgnoreLineBreaksFromProject = false;
 
         /// <summary>
+        /// 保持对话完整设置是否来自项目文件。
+        /// </summary>
+        private bool _isKeepDialogIntactFromProject = false;
+
+        /// <summary>
         /// 工具提示组件。
         /// </summary>
         private ToolTip _toolTip;
@@ -274,6 +296,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.rb_拆分参数_按对话拆分.Checked = false;
 
             this.cb_文本拆分_按句子拆分_忽略换行符.Checked = true;
+            this.cb_文本拆分_按句子拆分_对话不拆分.Checked = true;
 
             this.nud_拆分长度.Minimum = 分割_最小长度;
             this.nud_拆分长度.Maximum = 100000;
@@ -282,9 +305,11 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.rb_拆分参数_按对话拆分.CheckedChanged += rb_拆分方式_CheckedChanged;
             this.nud_拆分长度.ValueChanged += nud_拆分长度_ValueChanged;
             this.cb_文本拆分_按句子拆分_忽略换行符.CheckedChanged += cb_文本拆分_按句子拆分_忽略换行符_CheckedChanged;
+            this.cb_文本拆分_按句子拆分_对话不拆分.CheckedChanged += cb_文本拆分_按句子拆分_对话不拆分_CheckedChanged;
 
             _toolTip = new ToolTip();
             _toolTip.SetToolTip(this.cb_文本拆分_按句子拆分_忽略换行符, "勾选后，换行符不再作为硬分隔，而是先按空行拆分，再按句子拆分。");
+            _toolTip.SetToolTip(this.cb_文本拆分_按句子拆分_对话不拆分, "勾选后，拆分时如果拆分位置在对话符号（如引号）内，将后延至对话结束。");
 
             refresh文本拆分Ui();
         }
@@ -333,6 +358,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 this.lab_拆分长度.Enabled = this.rb_拆分方式_按句子拆分.Checked;
                 this.nud_拆分长度.Enabled = this.rb_拆分方式_按句子拆分.Checked;
                 this.cb_文本拆分_按句子拆分_忽略换行符.Enabled = this.rb_拆分方式_按句子拆分.Checked;
+                this.cb_文本拆分_按句子拆分_对话不拆分.Enabled = this.rb_拆分方式_按句子拆分.Checked;
 
                 this.bt_开始拆分.Enabled = inputText.Length > 0;
                 this.bt_插入段落分隔符.Enabled = inputText.Length > 0;
@@ -380,23 +406,48 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                     if (this.rb_拆分方式_按句子拆分.Checked == true)
                     {
                         bool ignoreLineBreaks = this.cb_文本拆分_按句子拆分_忽略换行符.Checked;
+                        bool keepDialogIntact = this.cb_文本拆分_按句子拆分_对话不拆分.Checked;
                         string preprocessedText = TextSplitHelper.PreprocessText(paragraph, ignoreLineBreaks);
 
-                        if (ignoreLineBreaks)
+                        if (keepDialogIntact)
                         {
-                            processedText = TextSplitHelper.SplitTextIgnoreLineBreaks(
-                                preprocessedText,
-                                (int)分割_最小长度,
-                                (int)this.nud_拆分长度.Value,
-                                整句_分割符号.ToCharArray());
+                            if (ignoreLineBreaks)
+                            {
+                                processedText = TextSplitHelper.SplitTextIgnoreLineBreaksWithDialogProtection(
+                                    preprocessedText,
+                                    (int)分割_最小长度,
+                                    (int)this.nud_拆分长度.Value,
+                                    整句_分割符号.ToCharArray(),
+                                    对话_分割符号.ToCharArray());
+                            }
+                            else
+                            {
+                                processedText = TextSplitHelper.SplitTextWithDialogProtection(
+                                    preprocessedText,
+                                    (int)分割_最小长度,
+                                    (int)this.nud_拆分长度.Value,
+                                    整句_分割符号.ToCharArray(),
+                                    对话_分割符号.ToCharArray());
+                            }
                         }
                         else
                         {
-                            processedText = TextSplitHelper.SplitText(
-                                preprocessedText,
-                                (int)分割_最小长度,
-                                (int)this.nud_拆分长度.Value,
-                                整句_分割符号.ToCharArray());
+                            if (ignoreLineBreaks)
+                            {
+                                processedText = TextSplitHelper.SplitTextIgnoreLineBreaks(
+                                    preprocessedText,
+                                    (int)分割_最小长度,
+                                    (int)this.nud_拆分长度.Value,
+                                    整句_分割符号.ToCharArray());
+                            }
+                            else
+                            {
+                                processedText = TextSplitHelper.SplitText(
+                                    preprocessedText,
+                                    (int)分割_最小长度,
+                                    (int)this.nud_拆分长度.Value,
+                                    整句_分割符号.ToCharArray());
+                            }
                         }
                     }
                     else if (this.rb_拆分参数_按对话拆分.Checked == true)
@@ -572,6 +623,20 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             if (!_isLoading)
             {
                 Setting.SetTextSplit_IgnoreLineBreaks(CurrentEngineId, this.cb_文本拆分_按句子拆分_忽略换行符.Checked);
+                onProjectModified();
+            }
+        }
+
+        /// <summary>
+        /// 事件处理：对话不拆分复选框状态改变。
+        /// </summary>
+        /// <param name="sender">发送者。</param>
+        /// <param name="e">事件参数。</param>
+        private void cb_文本拆分_按句子拆分_对话不拆分_CheckedChanged(object sender, EventArgs e)
+        {
+            if (!_isLoading)
+            {
+                Setting.SetTextSplit_KeepDialogIntact(CurrentEngineId, this.cb_文本拆分_按句子拆分_对话不拆分.Checked);
                 onProjectModified();
             }
         }

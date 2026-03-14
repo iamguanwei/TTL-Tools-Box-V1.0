@@ -414,7 +414,7 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
 
         private ITtlEngineConnector _currentEngine;
         private ITtlEngineConnector[] _allEngines;
-        private TtlEngineConnectionStatus _connectionStatus = TtlEngineConnectionStatus.未连接;
+        private volatile TtlEngineConnectionStatus _connectionStatus = TtlEngineConnectionStatus.未连接;
         private Timer _reconnectTimer;
         private CancellationTokenSource _connectionCts;
         private int _reconnectCountdown;

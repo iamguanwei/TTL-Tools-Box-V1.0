@@ -161,10 +161,6 @@ namespace GW.TTLtoolsBox.Core.TextSplit
                         }
                     }
                     _emptyLineCount = 0;
-                    if (_currentParagraph.Length > 0)
-                    {
-                        _currentParagraph.Append(" ");
-                    }
                     _currentParagraph.Append(_line);
                 }
             }
@@ -192,6 +188,143 @@ namespace GW.TTLtoolsBox.Core.TextSplit
             foreach (string _paragraph in _paragraphs)
             {
                 string _splitResult = SplitText(_paragraph, minLength, maxLength, mainSeparators, trimSegments);
+                _resultParagraphs.Add(_splitResult);
+            }
+
+            return string.Join("\r\n", _resultParagraphs);
+        }
+
+        /// <summary>
+        /// 按句子拆分文本（带对话保护）。
+        /// </summary>
+        /// <param name="originalText">原始文本。</param>
+        /// <param name="minLength">拆分后段落最短长度（含分隔符）。</param>
+        /// <param name="maxLength">拆分后段落最长长度（含分隔符）。</param>
+        /// <param name="mainSeparators">拆分分隔符数组。</param>
+        /// <param name="dialogSeparators">对话分隔符数组（必须成对出现）。</param>
+        /// <param name="trimSegments">是否移除拆分后段落的首尾空白符（默认false）。</param>
+        /// <returns>拆分后的文本（段落间用\r\n分隔）。</returns>
+        /// <remarks>
+        /// 拆分规则：
+        /// - 按句子分隔符拆分文本
+        /// - 如果拆分位置在对话符号之间，则后延至对话结束位置
+        /// - 对话分隔符必须成对出现，如 """" 表示 " 和 " 成对
+        /// </remarks>
+        public static string SplitTextWithDialogProtection(
+            string originalText,
+            int minLength,
+            int maxLength,
+            char[] mainSeparators,
+            char[] dialogSeparators,
+            bool trimSegments = false)
+        {
+            if (string.IsNullOrEmpty(originalText)) return string.Empty;
+            if (minLength <= 0) throw new ArgumentException("最短长度必须大于0", nameof(minLength));
+            if (maxLength < minLength) throw new ArgumentException("最长长度不能小于最短长度", nameof(maxLength));
+            mainSeparators = mainSeparators ?? Array.Empty<char>();
+            dialogSeparators = dialogSeparators ?? Array.Empty<char>();
+
+            string[] _textBlocks = originalText.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
+            List<string> _resultBlocks = new List<string>();
+
+            HashSet<char> _mainSepSet = new HashSet<char>(mainSeparators);
+
+            Dictionary<char, char> _dialogSepMap = buildDialogSeparatorMap(dialogSeparators);
+            HashSet<char> _dialogStartSet = new HashSet<char>(_dialogSepMap.Keys);
+
+            foreach (string block in _textBlocks)
+            {
+                if (string.IsNullOrEmpty(block))
+                {
+                    _resultBlocks.Add(block);
+                    continue;
+                }
+
+                List<string> splitBlockResult = processSingleBlockWithDialogProtection(
+                    block, minLength, maxLength, mainSeparators, _dialogSepMap, _dialogStartSet, trimSegments);
+
+                if (_mainSepSet.Count > 0) mergeSeparatorOnlySegments(splitBlockResult, _mainSepSet);
+
+                _resultBlocks.AddRange(splitBlockResult);
+            }
+
+            return string.Join("\r\n", _resultBlocks);
+        }
+
+        /// <summary>
+        /// 按句子拆分文本（忽略换行符+对话保护）。
+        /// </summary>
+        /// <param name="originalText">原始文本。</param>
+        /// <param name="minLength">拆分后段落最短长度（含分隔符）。</param>
+        /// <param name="maxLength">拆分后段落最长长度（含分隔符）。</param>
+        /// <param name="mainSeparators">拆分分隔符数组。</param>
+        /// <param name="dialogSeparators">对话分隔符数组（必须成对出现）。</param>
+        /// <param name="trimSegments">是否移除拆分后段落的首尾空白符（默认false）。</param>
+        /// <returns>拆分后的文本（段落间用\r\n分隔）。</returns>
+        public static string SplitTextIgnoreLineBreaksWithDialogProtection(
+            string originalText,
+            int minLength,
+            int maxLength,
+            char[] mainSeparators,
+            char[] dialogSeparators,
+            bool trimSegments = false)
+        {
+            if (string.IsNullOrEmpty(originalText)) return string.Empty;
+
+            string[] _lines = originalText.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
+            List<string> _paragraphs = new List<string>();
+            StringBuilder _currentParagraph = new StringBuilder();
+            int _emptyLineCount = 0;
+
+            foreach (string _line in _lines)
+            {
+                if (string.IsNullOrWhiteSpace(_line))
+                {
+                    _emptyLineCount++;
+                }
+                else
+                {
+                    if (_emptyLineCount > 0)
+                    {
+                        if (_currentParagraph.Length > 0)
+                        {
+                            string _paragraph = trimSegments ? _currentParagraph.ToString().Trim() : _currentParagraph.ToString();
+                            _paragraphs.Add(_paragraph);
+                            _currentParagraph.Clear();
+                        }
+                        for (int i = 0; i < _emptyLineCount - 1; i++)
+                        {
+                            _paragraphs.Add(string.Empty);
+                        }
+                    }
+                    _emptyLineCount = 0;
+                    _currentParagraph.Append(_line);
+                }
+            }
+
+            if (_emptyLineCount > 0)
+            {
+                if (_currentParagraph.Length > 0)
+                {
+                    string _paragraph = trimSegments ? _currentParagraph.ToString().Trim() : _currentParagraph.ToString();
+                    _paragraphs.Add(_paragraph);
+                    _currentParagraph.Clear();
+                }
+                for (int i = 0; i < _emptyLineCount - 1; i++)
+                {
+                    _paragraphs.Add(string.Empty);
+                }
+            }
+            else if (_currentParagraph.Length > 0)
+            {
+                string _lastParagraph = trimSegments ? _currentParagraph.ToString().Trim() : _currentParagraph.ToString();
+                _paragraphs.Add(_lastParagraph);
+            }
+
+            List<string> _resultParagraphs = new List<string>();
+            foreach (string _paragraph in _paragraphs)
+            {
+                string _splitResult = SplitTextWithDialogProtection(_paragraph, minLength, maxLength, mainSeparators, dialogSeparators, trimSegments);
                 _resultParagraphs.Add(_splitResult);
             }
 
@@ -531,6 +664,141 @@ namespace GW.TTLtoolsBox.Core.TextSplit
                 if (mainSep.Contains(text[i])) return i;
             }
             return -1;
+        }
+
+        /// <summary>
+        /// 构建对话分隔符映射（开始分隔符到结束分隔符）。
+        /// </summary>
+        /// <param name="dialogSeparators">对话分隔符数组（必须成对出现）。</param>
+        /// <returns>开始分隔符到结束分隔符的映射字典。</returns>
+        private static Dictionary<char, char> buildDialogSeparatorMap(char[] dialogSeparators)
+        {
+            Dictionary<char, char> _map = new Dictionary<char, char>();
+            for (int i = 0; i < dialogSeparators.Length; i += 2)
+            {
+                if (i + 1 < dialogSeparators.Length)
+                {
+                    _map[dialogSeparators[i]] = dialogSeparators[i + 1];
+                }
+            }
+            return _map;
+        }
+
+        /// <summary>
+        /// 处理单个文本块（带对话保护）。
+        /// </summary>
+        private static List<string> processSingleBlockWithDialogProtection(
+            string block,
+            int minLength,
+            int maxLength,
+            char[] mainSeparators,
+            Dictionary<char, char> dialogSepMap,
+            HashSet<char> dialogStartSet,
+            bool trimSegments)
+        {
+            List<string> _splitResult = new List<string>();
+            int _currentPos = 0;
+            int _totalLength = block.Length;
+
+            HashSet<char> _mainSepSet = new HashSet<char>(mainSeparators);
+
+            if (!block.Any(c => _mainSepSet.Contains(c)))
+            {
+                string segment = trimSegments ? block.Trim() : block;
+                _splitResult.Add(segment);
+                return _splitResult;
+            }
+
+            while (_currentPos < _totalLength)
+            {
+                int _maxEndPos = _currentPos + maxLength - 1;
+                _maxEndPos = Math.Min(_maxEndPos, _totalLength - 1);
+
+                int _splitPos = findLastSeparatorInRange(block, _currentPos, _maxEndPos, _mainSepSet);
+
+                if (_splitPos != -1)
+                {
+                    _splitPos = adjustSplitPosForDialog(block, _splitPos, dialogSepMap, dialogStartSet);
+
+                    string _segment = block.Substring(_currentPos, _splitPos - _currentPos + 1);
+                    _splitResult.Add(trimSegments ? _segment.Trim() : _segment);
+                    _currentPos = _splitPos + 1;
+                }
+                else
+                {
+                    int _nextSepPos = findFirstSeparatorAfterPos(block, _maxEndPos + 1, _mainSepSet);
+
+                    if (_nextSepPos != -1)
+                    {
+                        _nextSepPos = adjustSplitPosForDialog(block, _nextSepPos, dialogSepMap, dialogStartSet);
+
+                        string _segment = block.Substring(_currentPos, _nextSepPos - _currentPos + 1);
+                        _splitResult.Add(trimSegments ? _segment.Trim() : _segment);
+                        _currentPos = _nextSepPos + 1;
+                    }
+                    else
+                    {
+                        string _segment = block.Substring(_currentPos);
+                        _splitResult.Add(trimSegments ? _segment.Trim() : _segment);
+                        _currentPos = _totalLength;
+                    }
+                }
+            }
+
+            return _splitResult;
+        }
+
+        /// <summary>
+        /// 调整拆分位置以保护对话完整性。
+        /// </summary>
+        /// <param name="text">文本内容。</param>
+        /// <param name="splitPos">原始拆分位置。</param>
+        /// <param name="dialogSepMap">对话分隔符映射。</param>
+        /// <param name="dialogStartSet">对话开始分隔符集合。</param>
+        /// <returns>调整后的拆分位置。</returns>
+        private static int adjustSplitPosForDialog(
+            string text,
+            int splitPos,
+            Dictionary<char, char> dialogSepMap,
+            HashSet<char> dialogStartSet)
+        {
+            int _dialogDepth = 0;
+            char? _currentDialogEnd = null;
+
+            for (int i = 0; i <= splitPos; i++)
+            {
+                char c = text[i];
+
+                if (_currentDialogEnd == null)
+                {
+                    if (dialogStartSet.Contains(c))
+                    {
+                        _dialogDepth++;
+                        _currentDialogEnd = dialogSepMap[c];
+                    }
+                }
+                else
+                {
+                    if (c == _currentDialogEnd.Value)
+                    {
+                        _dialogDepth--;
+                        _currentDialogEnd = null;
+                    }
+                }
+            }
+
+            if (_dialogDepth > 0 && _currentDialogEnd.HasValue)
+            {
+                for (int i = splitPos + 1; i < text.Length; i++)
+                {
+                    if (text[i] == _currentDialogEnd.Value)
+                    {
+                        return i;
+                    }
+                }
+            }
+
+            return splitPos;
         }
 
         #endregion

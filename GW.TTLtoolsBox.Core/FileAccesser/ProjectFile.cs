@@ -107,6 +107,15 @@ namespace GW.TTLtoolsBox.Core.FileAccesser
         }
 
         /// <summary>
+        /// 获取或设置文本拆分时是否保持对话完整（不拆分对话内容）。
+        /// </summary>
+        public bool? TextSplit_KeepDialogIntact
+        {
+            get { return _projectData.TextSplit_KeepDialogIntact; }
+            set { _projectData.TextSplit_KeepDialogIntact = value; }
+        }
+
+        /// <summary>
         /// 获取保存的文件名。
         /// </summary>
         public string FileName { get; private set; } = string.Empty;

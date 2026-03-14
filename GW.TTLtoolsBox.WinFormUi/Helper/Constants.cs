@@ -13,7 +13,7 @@ namespace GW.TTLtoolsBox.WinFormUi.Helper
         /// <summary>
         /// 拆分文本时使用的整句分隔符号。
         /// </summary>
-        public const string 整句_分割符号 = "！!？?。：\"\"\"…;;";
+        public const string 整句_分割符号 = "！?。：”…；";
 
         /// <summary>
         /// 拆分文本时最小的文本长度。
@@ -22,8 +22,9 @@ namespace GW.TTLtoolsBox.WinFormUi.Helper
 
         /// <summary>
         /// 拆分文本时使用的对话分隔符号。
+        /// 必须两两成对出现，且每对分隔符号的第一个字符和第二个字符必须不同。
         /// </summary>
-        public const string 对话_分割符号 = "“”「」";
+        public const string 对话_分割符号 = "“”";
 
         #endregion
 

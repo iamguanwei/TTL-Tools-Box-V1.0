@@ -1475,6 +1475,10 @@ namespace GW.TTLtoolsBox.WinFormUi
             {
                 _ttlSchemePanel?.StartConnectTtlEngine();
             }
+            else if (status == TtlEngineConnectionStatus.连接成功)
+            {
+                _voiceGenerationPanel?.TryResumeQueue();
+            }
         }
 
         #endregion

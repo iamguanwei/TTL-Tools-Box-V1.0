@@ -280,6 +280,41 @@ namespace GW.TTLtoolsBox.WinFormUi.Helper
         }
 
         /// <summary>
+        /// 获取文本拆分的保持对话完整设置。
+        /// </summary>
+        /// <param name="engineId">TTL引擎ID。</param>
+        /// <param name="defaultValue">默认值。</param>
+        /// <returns>是否保持对话完整。</returns>
+        public static bool GetTextSplit_KeepDialogIntact(string engineId, bool defaultValue = true)
+        {
+            if (string.IsNullOrEmpty(engineId))
+            {
+                return defaultValue;
+            }
+
+            string key = $"TextSplit_KeepDialogIntact_{engineId}";
+            string value = GetValue(key, defaultValue.ToString());
+            return bool.TryParse(value, out bool result) ? result : defaultValue;
+        }
+
+        /// <summary>
+        /// 设置文本拆分的保持对话完整设置。
+        /// </summary>
+        /// <param name="engineId">TTL引擎ID。</param>
+        /// <param name="value">是否保持对话完整。</param>
+        public static void SetTextSplit_KeepDialogIntact(string engineId, bool value)
+        {
+            if (string.IsNullOrEmpty(engineId))
+            {
+                return;
+            }
+
+            string key = $"TextSplit_KeepDialogIntact_{engineId}";
+            SetValue(key, value);
+            Save();
+        }
+
+        /// <summary>
         /// 获取文本拆分的拆分方式（true=按句子拆分，false=按对话拆分）。
         /// </summary>
         /// <param name="engineId">TTL引擎ID。</param>

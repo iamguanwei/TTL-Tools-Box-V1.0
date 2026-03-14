@@ -56,11 +56,26 @@ namespace GW.TTLtoolsBox.Core.PolyReplace
             get
             {
                 List<string> outValue = new List<string>();
+                _alternativeSourceMap.Clear();
 
                 outValue.Add(_none_Select_Text);
-                
-                var ps = getSelectedPolyphonicScheme();
-                if (ps != null) outValue.AddRange(ps.ReplaceStrings);
+                _alternativeSourceMap.Add((-1, -1));
+
+                foreach (int schemeIdx in _selectedSchemeIndices)
+                {
+                    if (schemeIdx >= 0 && schemeIdx < UsedPolyphonicItem.PolyphonicSchemes.Length)
+                    {
+                        var scheme = UsedPolyphonicItem.PolyphonicSchemes[schemeIdx];
+                        if (scheme.ReplaceStrings != null)
+                        {
+                            for (int i = 0; i < scheme.ReplaceStrings.Length; i++)
+                            {
+                                outValue.Add(scheme.ReplaceStrings[i]);
+                                _alternativeSourceMap.Add((schemeIdx, i));
+                            }
+                        }
+                    }
+                }
 
                 return outValue.ToArray();
             }
@@ -123,20 +138,42 @@ namespace GW.TTLtoolsBox.Core.PolyReplace
         /// <param name="newReplaceText">新的替换文本，null表示选择"不替换"。</param>
         public void UpdateReplaceText(string newReplaceText)
         {
-            if (newReplaceText == null)
-            {
-                _selectedReplaceStringIndex = -1;
-            }
-            else
-            {
-                var ps = getSelectedPolyphonicScheme();
-                var index = Array.FindIndex(ps.ReplaceStrings, s => s.Equals(newReplaceText) == true);
-                if (index >= 0) _selectedReplaceStringIndex = index;
-                else _selectedReplaceStringIndex = -1;
-            }
+                if (newReplaceText == null)
+                {
+                    _selectedReplaceStringIndex = -1;
+                    _selectedSchemeIndex = -1;
+                }
+                else
+                {
+                    bool found = false;
+                    for (int i = 1; i < _alternativeSourceMap.Count; i++)
+                    {
+                        var (schemeIdx, replaceIdx) = _alternativeSourceMap[i];
+                        if (schemeIdx >= 0 && schemeIdx < UsedPolyphonicItem.PolyphonicSchemes.Length)
+                        {
+                            var scheme = UsedPolyphonicItem.PolyphonicSchemes[schemeIdx];
+                            if (scheme.ReplaceStrings != null && replaceIdx >= 0 && replaceIdx < scheme.ReplaceStrings.Length)
+                            {
+                                if (scheme.ReplaceStrings[replaceIdx] == newReplaceText)
+                                {
+                                    _selectedSchemeIndex = schemeIdx;
+                                    _selectedReplaceStringIndex = replaceIdx;
+                                    found = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
 
-            IsReplaceTextUpdated = true;
-        }
+                    if (!found)
+                    {
+                        _selectedReplaceStringIndex = -1;
+                        _selectedSchemeIndex = -1;
+                    }
+                }
+
+                IsReplaceTextUpdated = true;
+            }
 
         #endregion
 
@@ -147,43 +184,49 @@ namespace GW.TTLtoolsBox.Core.PolyReplace
         /// </summary>
         /// <param name="targetText">目标文本。</param>
         /// <param name="polyphonicItems">多音字替换项数组。</param>
-        /// <param name="currentSchemeName">当前使用的多音字方案名称。</param>
+        /// <param name="currentSchemeNames">当前使用的多音字方案名称数组。</param>
         /// <returns>生成的ReplaceItem数组。</returns>
         public static ReplaceItem[] GenerateFromText(
             string targetText,
             PolyphonicItem[] polyphonicItems,
-            string currentSchemeName)
+            string[] currentSchemeNames)
         {
             if (targetText == null) throw new ArgumentNullException(nameof(targetText));
             if (polyphonicItems == null || polyphonicItems.Length == 0) throw new ArgumentNullException(nameof(polyphonicItems));
-            if (currentSchemeName == null) throw new ArgumentNullException(nameof(currentSchemeName));
+            if (currentSchemeNames == null || currentSchemeNames.Length == 0) throw new ArgumentNullException(nameof(currentSchemeNames));
 
             List<ReplaceItem> replaceItems = new List<ReplaceItem>();
 
-            int psIndex = -1;
+            List<int> psIndices = new List<int>();
+            PolyphonicItem tempPi = new PolyphonicItem();
+            foreach (var schemeName in currentSchemeNames)
             {
-                PolyphonicItem pi = new PolyphonicItem();
-                psIndex = Array.FindIndex(pi.PolyphonicSchemes, p => p.Name.Equals(currentSchemeName) == true);
-                if (psIndex < 0) throw new Exception($"无法找到名称为 {currentSchemeName} 的多音字方案");
+                int idx = Array.FindIndex(tempPi.PolyphonicSchemes, p => p.Name.Equals(schemeName) == true);
+                if (idx >= 0) psIndices.Add(idx);
+            }
+
+            if (psIndices.Count == 0)
+            {
+                throw new Exception($"无法找到任何有效的多音字方案");
             }
 
             var sortedPolyphonicItems = polyphonicItems
-                .Where(pi => !string.IsNullOrWhiteSpace(pi.OriginalText))
-                .OrderByDescending(pi => pi.OriginalText.Length)
+                .Where(item => !string.IsNullOrWhiteSpace(item.OriginalText))
+                .OrderByDescending(item => item.OriginalText.Length)
                 .ToArray();
 
             HashSet<int> occupiedPositions = new HashSet<int>();
 
-            foreach (var pi in sortedPolyphonicItems)
+            foreach (var item in sortedPolyphonicItems)
             {
                 int startIndex = 0;
                 while (startIndex < targetText.Length)
                 {
-                    int positionIndex = targetText.IndexOf(pi.OriginalText, startIndex);
+                    int positionIndex = targetText.IndexOf(item.OriginalText, startIndex);
                     if (positionIndex == -1) break;
 
                     bool isOccupied = false;
-                    for (int i = positionIndex; i < positionIndex + pi.OriginalText.Length; i++)
+                    for (int i = positionIndex; i < positionIndex + item.OriginalText.Length; i++)
                     {
                         if (occupiedPositions.Contains(i))
                         {
@@ -196,14 +239,15 @@ namespace GW.TTLtoolsBox.Core.PolyReplace
                     {
                         ReplaceItem replaceItem = new ReplaceItem()
                         {
-                            UsedPolyphonicItem = pi,
+                            UsedPolyphonicItem = item,
                             PositionIndex = positionIndex,
-                            _selectedSchemeIndex = psIndex,
+                            _selectedSchemeIndex = psIndices[0],
+                            _selectedSchemeIndices = psIndices.ToArray(),
                         };
 
                         int preContextStart = Math.Max(0, positionIndex - _context_Max_Length);
                         int preContextEnd = positionIndex;
-                        int targetEnd = positionIndex + pi.OriginalText.Length;
+                        int targetEnd = positionIndex + item.OriginalText.Length;
                         int postContextStart = targetEnd;
                         int postContextEnd = Math.Min(targetText.Length, targetEnd + _context_Max_Length);
 
@@ -235,7 +279,7 @@ namespace GW.TTLtoolsBox.Core.PolyReplace
 
                         replaceItems.Add(replaceItem);
 
-                        for (int i = positionIndex; i < positionIndex + pi.OriginalText.Length; i++)
+                        for (int i = positionIndex; i < positionIndex + item.OriginalText.Length; i++)
                         {
                             occupiedPositions.Add(i);
                         }
@@ -259,14 +303,13 @@ namespace GW.TTLtoolsBox.Core.PolyReplace
             if (string.IsNullOrEmpty(targetText)) return targetText;
             if (replaceItems == null || replaceItems.Length == 0) return targetText;
 
-            // 按位置倒序排序，避免替换影响后续位置
             var sortedItems = replaceItems.OrderByDescending(item => item.PositionIndex).ToArray();
             StringBuilder sb = new StringBuilder(targetText);
 
             foreach (var item in sortedItems)
             {
                 string replaceText = item.ReplaceText;
-                if (replaceText != item.TargetText) // 只有当替换文本与原文本不同时才替换
+                if (replaceText != item.TargetText)
                 {
                     sb.Remove(item.PositionIndex, item.TargetText.Length);
                     sb.Insert(item.PositionIndex, replaceText);
@@ -305,6 +348,16 @@ namespace GW.TTLtoolsBox.Core.PolyReplace
         /// 选中的替换字符串索引。
         /// </summary>
         private int _selectedReplaceStringIndex = -1;
+
+        /// <summary>
+        /// 选中的方案索引数组。
+        /// </summary>
+        private int[] _selectedSchemeIndices = new int[0];
+
+        /// <summary>
+        /// 备选项来源映射（索引 -> (方案索引, 替换字符串索引)）。
+        /// </summary>
+        private List<(int schemeIndex, int replaceIndex)> _alternativeSourceMap = new List<(int, int)>();
 
         /// <summary>
         /// 获取当前选中的多音字方案。

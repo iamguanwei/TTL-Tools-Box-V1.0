@@ -48,6 +48,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.bt_清理所有文本 = new System.Windows.Forms.Button();
             this.lab_拆分长度 = new System.Windows.Forms.Label();
             this.nud_拆分长度 = new System.Windows.Forms.NumericUpDown();
+            this.cb_文本拆分_按句子拆分_对话不拆分 = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.sc_主分割)).BeginInit();
             this.sc_主分割.Panel1.SuspendLayout();
             this.sc_主分割.Panel2.SuspendLayout();
@@ -204,6 +205,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.gb_拆分参数.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
+            this.gb_拆分参数.Controls.Add(this.cb_文本拆分_按句子拆分_对话不拆分);
             this.gb_拆分参数.Controls.Add(this.cb_文本拆分_按句子拆分_忽略换行符);
             this.gb_拆分参数.Controls.Add(this.rb_拆分参数_按对话拆分);
             this.gb_拆分参数.Controls.Add(this.rb_拆分方式_按句子拆分);
@@ -232,7 +234,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             // rb_拆分参数_按对话拆分
             // 
             this.rb_拆分参数_按对话拆分.AutoSize = true;
-            this.rb_拆分参数_按对话拆分.Location = new System.Drawing.Point(6, 111);
+            this.rb_拆分参数_按对话拆分.Location = new System.Drawing.Point(6, 144);
             this.rb_拆分参数_按对话拆分.Name = "rb_拆分参数_按对话拆分";
             this.rb_拆分参数_按对话拆分.Size = new System.Drawing.Size(83, 16);
             this.rb_拆分参数_按对话拆分.TabIndex = 7;
@@ -305,6 +307,16 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.nud_拆分长度.Size = new System.Drawing.Size(84, 21);
             this.nud_拆分长度.TabIndex = 3;
             // 
+            // cb_文本拆分_按句子拆分_对话不拆分
+            // 
+            this.cb_文本拆分_按句子拆分_对话不拆分.AutoSize = true;
+            this.cb_文本拆分_按句子拆分_对话不拆分.Location = new System.Drawing.Point(24, 95);
+            this.cb_文本拆分_按句子拆分_对话不拆分.Name = "cb_文本拆分_按句子拆分_对话不拆分";
+            this.cb_文本拆分_按句子拆分_对话不拆分.Size = new System.Drawing.Size(84, 16);
+            this.cb_文本拆分_按句子拆分_对话不拆分.TabIndex = 8;
+            this.cb_文本拆分_按句子拆分_对话不拆分.Text = "对话不拆分";
+            this.cb_文本拆分_按句子拆分_对话不拆分.UseVisualStyleBackColor = true;
+            // 
             // TextSplitPanel
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
@@ -349,5 +361,6 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         private System.Windows.Forms.Label lab_拆分长度;
         private System.Windows.Forms.NumericUpDown nud_拆分长度;
         private System.Windows.Forms.CheckBox cb_文本拆分_按句子拆分_忽略换行符;
+        private System.Windows.Forms.CheckBox cb_文本拆分_按句子拆分_对话不拆分;
     }
 }

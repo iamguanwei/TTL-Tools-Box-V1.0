@@ -225,6 +225,21 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         /// </summary>
         private HashSet<PolyphonicItem> _completedGroups = new HashSet<PolyphonicItem>();
 
+        /// <summary>
+        /// 标记当前方案是否由引擎设置（引擎设置时不保存到配置）。
+        /// </summary>
+        private bool _isEngineSetSchemes = false;
+
+        /// <summary>
+        /// 用户选中的方案名称列表（内存缓存）。
+        /// </summary>
+        private HashSet<string> _userSelectedSchemes = new HashSet<string>();
+
+        /// <summary>
+        /// 标记是否已从配置加载过方案选择。
+        /// </summary>
+        private bool _hasLoadedSchemesFromConfig = false;
+
         #endregion
 
         #region UI初始化
@@ -282,22 +297,6 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 }
             }
 
-            // 可选多音字方案列表
-            {
-                var selectedItem = Setting.GetValue(this.cb_选择多音字方案.Name, string.Empty);
-                foreach (var ps in (new PolyphonicItem().PolyphonicSchemes))
-                {
-                    this.cb_选择多音字方案.Items.Add(ps.ShowName);
-                }
-
-                if (this.cb_选择多音字方案.Items.Count > 0)
-                {
-                    if (this.cb_选择多音字方案.Items.Contains(selectedItem) == true) this.cb_选择多音字方案.SelectedItem = selectedItem;
-                    else this.cb_选择多音字方案.SelectedIndex = 0;
-                }
-                else this.cb_选择多音字方案.Enabled = false;
-            }
-
             refresh多音字替换Ui();
         }
 
@@ -324,12 +323,39 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                 this.bt_保存多音字方案.Enabled = this.bt_还原多音字方案.Enabled = this.dgv_多音字方案.Enabled && _dgv多音字方案表Changed;
 
                 var currentEngine = ConnectionManager?.CurrentEngine;
-                if (currentEngine != null) this.cb_选择多音字方案.SelectedItem = currentEngine.PolyphonicScheme.ShowName;
-                this.cb_选择多音字方案.Enabled = !_do多音字替换Working && this.cb_选择多音字方案.Items.Count > 0 && currentEngine == null;
+
+                // 确保列表中有所有方案（仅首次或列表为空时添加）
+                if (this.clb_选择多音字方案.Items.Count == 0)
+                {
+                    foreach (var ps in (new PolyphonicItem().PolyphonicSchemes))
+                    {
+                        this.clb_选择多音字方案.Items.Add(ps.ShowName, false);
+                    }
+                }
+
+                if (currentEngine != null)
+                {
+                    // 选择了非"无"引擎，勾选引擎支持的方案并锁定
+                    var engineSchemeNames = currentEngine.PolyphonicSchemes.Select(s => s.ShowName).ToHashSet();
+                    for (int i = 0; i < this.clb_选择多音字方案.Items.Count; i++)
+                    {
+                        var itemName = this.clb_选择多音字方案.Items[i].ToString();
+                        this.clb_选择多音字方案.SetItemChecked(i, engineSchemeNames.Contains(itemName));
+                    }
+                    this.clb_选择多音字方案.Enabled = false;
+                    _isEngineSetSchemes = true;
+                }
+                else
+                {
+                    // 选择了"无"引擎，加载用户配置并允许自由选择
+                    loadSelectedSchemes();
+                    this.clb_选择多音字方案.Enabled = !_do多音字替换Working;
+                    _isEngineSetSchemes = false;
+                }
+
                 this.bt_开始替换最终文本中的多音字.Enabled =
                     !_do多音字替换Working &&
-                    this.cb_选择多音字方案.Items.Count > 0 &&
-                    this.cb_选择多音字方案.SelectedItem != null &&
+                    this.clb_选择多音字方案.CheckedItems.Count > 0 &&
                     outputTextHasContent &&
                     _savedPolyphonicItemArray.Length > 0;
 
@@ -424,14 +450,74 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             string targetText = this.tb_最终文本.Text;
             if (string.IsNullOrWhiteSpace(targetText) == false)
             {
-                var pi = new PolyphonicItem();
-                var psIndex = this.cb_选择多音字方案.SelectedIndex;
-                if (psIndex >= 0 && psIndex < pi.PolyphonicSchemes.Length)
+                var selectedSchemeNames = getSelectedSchemeNames();
+                if (selectedSchemeNames.Length > 0)
                 {
-                    var psName = pi.PolyphonicSchemes[psIndex].Name;
-                    _working多音字Array = ReplaceItem.GenerateFromText(targetText, _savedPolyphonicItemArray, psName);
+                    _working多音字Array = ReplaceItem.GenerateFromText(targetText, _savedPolyphonicItemArray, selectedSchemeNames);
                 }
             }
+        }
+
+        /// <summary>
+        /// 获取选中的方案名称数组。
+        /// </summary>
+        /// <returns>选中的方案名称数组。</returns>
+        private string[] getSelectedSchemeNames()
+        {
+            List<string> selectedSchemeNames = new List<string>();
+            var pi = new PolyphonicItem();
+
+            foreach (var item in this.clb_选择多音字方案.CheckedItems)
+            {
+                var showName = item.ToString();
+                var scheme = Array.Find(pi.PolyphonicSchemes, p => p.ShowName.Equals(showName));
+                if (scheme != null)
+                {
+                    selectedSchemeNames.Add(scheme.Name);
+                }
+            }
+
+            return selectedSchemeNames.ToArray();
+        }
+
+        /// <summary>
+        /// 加载用户配置的选中方案。
+        /// </summary>
+        private void loadSelectedSchemes()
+        {
+            // 只在首次加载时从配置读取
+            if (!_hasLoadedSchemesFromConfig)
+            {
+                var savedSchemes = Setting.GetValue(this.clb_选择多音字方案.Name, string.Empty);
+                var schemeArray = savedSchemes.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                _userSelectedSchemes = new HashSet<string>(schemeArray);
+                _hasLoadedSchemesFromConfig = true;
+            }
+
+            // 从内存缓存设置勾选状态
+            for (int i = 0; i < this.clb_选择多音字方案.Items.Count; i++)
+            {
+                var itemName = this.clb_选择多音字方案.Items[i].ToString();
+                this.clb_选择多音字方案.SetItemChecked(i, _userSelectedSchemes.Contains(itemName));
+            }
+        }
+
+        /// <summary>
+        /// 保存用户配置的选中方案。
+        /// </summary>
+        private void saveSelectedSchemes()
+        {
+            if (_isEngineSetSchemes) return;
+
+            // 更新内存缓存
+            _userSelectedSchemes.Clear();
+            foreach (var item in this.clb_选择多音字方案.CheckedItems)
+            {
+                _userSelectedSchemes.Add(item.ToString());
+            }
+
+            // 写入配置
+            Setting.SetValue(this.clb_选择多音字方案.Name, string.Join(",", _userSelectedSchemes));
         }
 
         /// <summary>
@@ -816,13 +902,66 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         }
 
         /// <summary>
+        /// 事件处理：点击多音字方案列表项。
+        /// 实现单击即勾选/取消勾选。
+        /// </summary>
+        /// <param name="sender">发送者。</param>
+        /// <param name="e">事件参数。</param>
+        private void clb_选择多音字方案_Click(object sender, EventArgs e)
+        {
+            // 获取鼠标点击位置对应的项索引
+            System.Drawing.Point point = this.clb_选择多音字方案.PointToClient(Cursor.Position);
+            int index = this.clb_选择多音字方案.IndexFromPoint(point);
+
+            if (index >= 0)
+            {
+                // 切换勾选状态
+                bool currentState = this.clb_选择多音字方案.GetItemChecked(index);
+                this.clb_选择多音字方案.SetItemChecked(index, !currentState);
+            }
+        }
+
+        /// <summary>
+        /// 事件处理：多音字方案勾选状态变化。
+        /// 刷新按钮状态并实时保存勾选状态。
+        /// </summary>
+        /// <param name="sender">发送者。</param>
+        /// <param name="e">事件参数。</param>
+        private void clb_选择多音字方案_ItemCheck(object sender, ItemCheckEventArgs e)
+        {
+            // 检查控件句柄是否已创建，避免在初始化时调用BeginInvoke出错
+            if (!this.IsHandleCreated) return;
+
+            this.BeginInvoke(new Action(() =>
+            {
+                // 更新内存缓存并保存到配置（仅非引擎设置时）
+                if (!_isEngineSetSchemes)
+                {
+                    _userSelectedSchemes.Clear();
+                    foreach (var item in this.clb_选择多音字方案.CheckedItems)
+                    {
+                        _userSelectedSchemes.Add(item.ToString());
+                    }
+                    Setting.SetValue(this.clb_选择多音字方案.Name, string.Join(",", _userSelectedSchemes));
+                }
+
+                // 刷新按钮状态
+                this.bt_开始替换最终文本中的多音字.Enabled =
+                    !_do多音字替换Working &&
+                    this.clb_选择多音字方案.CheckedItems.Count > 0 &&
+                    this.tb_最终文本.Text.Length > 0 &&
+                    _savedPolyphonicItemArray.Length > 0;
+            }));
+        }
+
+        /// <summary>
         /// 事件处理：点击"替换最终文本中的多音字"按钮。
         /// </summary>
         /// <param name="sender">发送者。</param>
         /// <param name="e">事件参数。</param>
         private void bt_替换最终文本中的多音字_Click(object sender, EventArgs e)
         {
-            if (this.cb_选择多音字方案.SelectedItem != null)
+            if (this.clb_选择多音字方案.CheckedItems.Count > 0)
             {
                 // 多音字方案必须保存才允许替换操作
                 if (_dgv多音字方案表Changed == false ||
@@ -831,7 +970,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                     // 保存相关配置
                     {
                         if (_dgv多音字方案表Changed == true) bt_保存多音字方案_Click(sender, e);
-                        Setting.SetValue(this.cb_选择多音字方案.Name, this.cb_选择多音字方案.SelectedItem.ToString());
+                        saveSelectedSchemes();
                     }
 
                     // 启动替换工作

@@ -71,6 +71,12 @@ namespace GW.TTLtoolsBox.Core.Entity
         public bool? TextSplit_IgnoreLineBreaks { get; set; } = null;
 
         /// <summary>
+        /// 获取或设置文本拆分时是否保持对话完整（不拆分对话内容）。
+        /// </summary>
+        [DataMember(Name = "textSplit_keepDialogIntact")]
+        public bool? TextSplit_KeepDialogIntact { get; set; } = null;
+
+        /// <summary>
         /// 获取或设置引擎数据字典，键为引擎ID。
         /// </summary>
         [DataMember(Name = "engineDataDic")]

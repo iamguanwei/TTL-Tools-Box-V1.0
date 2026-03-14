@@ -102,9 +102,9 @@ namespace GW.TTLtoolsBox.Core.TtlEngine
         /// <summary>
         /// 获取当前引擎所使用的多音字方案
         /// </summary>
-        public override IPolyphonicScheme PolyphonicScheme
+        public override IPolyphonicScheme[] PolyphonicSchemes
         {
-            get { return new NumberTonePinyinPolyphonicScheme(); }
+            get { return new IPolyphonicScheme[] { new NumberTonePinyinPolyphonicScheme(), new HomophonePolyphonicScheme() }; }
         }
 
         /// <summary>

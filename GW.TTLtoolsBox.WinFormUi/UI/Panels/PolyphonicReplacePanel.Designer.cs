@@ -29,10 +29,11 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle3 = new System.Windows.Forms.DataGridViewCellStyle();
-            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle4 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
+            System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle2 = new System.Windows.Forms.DataGridViewCellStyle();
             this.sc_主分割 = new System.Windows.Forms.SplitContainer();
             this.gb_替换工作面板 = new System.Windows.Forms.GroupBox();
+            this.clb_选择多音字方案 = new System.Windows.Forms.CheckedListBox();
             this.pan_实施工作面板 = new System.Windows.Forms.Panel();
             this.lab_替换工作信息 = new System.Windows.Forms.Label();
             this.bt_取消应用替换结果 = new System.Windows.Forms.Button();
@@ -47,7 +48,6 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.lab_上文 = new System.Windows.Forms.Label();
             this.lab_选择多音字方案 = new System.Windows.Forms.Label();
             this.bt_开始替换最终文本中的多音字 = new System.Windows.Forms.Button();
-            this.cb_选择多音字方案 = new System.Windows.Forms.ComboBox();
             this.sc_副面板主分割 = new System.Windows.Forms.SplitContainer();
             this.gb_替换方案 = new System.Windows.Forms.GroupBox();
             this.dgv_多音字方案 = new System.Windows.Forms.DataGridView();
@@ -96,10 +96,10 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             // 
             // gb_替换工作面板
             // 
+            this.gb_替换工作面板.Controls.Add(this.clb_选择多音字方案);
             this.gb_替换工作面板.Controls.Add(this.pan_实施工作面板);
             this.gb_替换工作面板.Controls.Add(this.lab_选择多音字方案);
             this.gb_替换工作面板.Controls.Add(this.bt_开始替换最终文本中的多音字);
-            this.gb_替换工作面板.Controls.Add(this.cb_选择多音字方案);
             this.gb_替换工作面板.Dock = System.Windows.Forms.DockStyle.Fill;
             this.gb_替换工作面板.Location = new System.Drawing.Point(0, 0);
             this.gb_替换工作面板.Name = "gb_替换工作面板";
@@ -107,6 +107,18 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.gb_替换工作面板.TabIndex = 2;
             this.gb_替换工作面板.TabStop = false;
             this.gb_替换工作面板.Text = "工作面板";
+            // 
+            // clb_选择多音字方案
+            // 
+            this.clb_选择多音字方案.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.clb_选择多音字方案.FormattingEnabled = true;
+            this.clb_选择多音字方案.Location = new System.Drawing.Point(77, 29);
+            this.clb_选择多音字方案.Name = "clb_选择多音字方案";
+            this.clb_选择多音字方案.Size = new System.Drawing.Size(507, 84);
+            this.clb_选择多音字方案.TabIndex = 15;
+            this.clb_选择多音字方案.Click += new System.EventHandler(this.clb_选择多音字方案_Click);
+            this.clb_选择多音字方案.ItemCheck += new System.Windows.Forms.ItemCheckEventHandler(this.clb_选择多音字方案_ItemCheck);
             // 
             // pan_实施工作面板
             // 
@@ -123,9 +135,9 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             this.pan_实施工作面板.Controls.Add(this.lab_下文);
             this.pan_实施工作面板.Controls.Add(this.lab_替换目标);
             this.pan_实施工作面板.Controls.Add(this.lab_上文);
-            this.pan_实施工作面板.Location = new System.Drawing.Point(3, 106);
+            this.pan_实施工作面板.Location = new System.Drawing.Point(3, 183);
             this.pan_实施工作面板.Name = "pan_实施工作面板";
-            this.pan_实施工作面板.Size = new System.Drawing.Size(581, 540);
+            this.pan_实施工作面板.Size = new System.Drawing.Size(581, 463);
             this.pan_实施工作面板.TabIndex = 14;
             // 
             // lab_替换工作信息
@@ -264,25 +276,13 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             // bt_开始替换最终文本中的多音字
             // 
             this.bt_开始替换最终文本中的多音字.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.bt_开始替换最终文本中的多音字.Location = new System.Drawing.Point(480, 64);
+            this.bt_开始替换最终文本中的多音字.Location = new System.Drawing.Point(480, 128);
             this.bt_开始替换最终文本中的多音字.Name = "bt_开始替换最终文本中的多音字";
             this.bt_开始替换最终文本中的多音字.Size = new System.Drawing.Size(104, 28);
             this.bt_开始替换最终文本中的多音字.TabIndex = 11;
             this.bt_开始替换最终文本中的多音字.Text = "开始替换";
             this.bt_开始替换最终文本中的多音字.UseVisualStyleBackColor = true;
             this.bt_开始替换最终文本中的多音字.Click += new System.EventHandler(this.bt_替换最终文本中的多音字_Click);
-            // 
-            // cb_选择多音字方案
-            // 
-            this.cb_选择多音字方案.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.cb_选择多音字方案.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cb_选择多音字方案.Font = new System.Drawing.Font("宋体", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            this.cb_选择多音字方案.FormattingEnabled = true;
-            this.cb_选择多音字方案.Location = new System.Drawing.Point(77, 29);
-            this.cb_选择多音字方案.Name = "cb_选择多音字方案";
-            this.cb_选择多音字方案.Size = new System.Drawing.Size(507, 20);
-            this.cb_选择多音字方案.TabIndex = 12;
             // 
             // sc_副面板主分割
             // 
@@ -323,23 +323,23 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
             | System.Windows.Forms.AnchorStyles.Right)));
             this.dgv_多音字方案.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.DisplayedCells;
             this.dgv_多音字方案.AutoSizeRowsMode = System.Windows.Forms.DataGridViewAutoSizeRowsMode.DisplayedCells;
-            dataGridViewCellStyle3.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle3.BackColor = System.Drawing.SystemColors.Control;
-            dataGridViewCellStyle3.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            dataGridViewCellStyle3.ForeColor = System.Drawing.SystemColors.WindowText;
-            dataGridViewCellStyle3.SelectionBackColor = System.Drawing.SystemColors.Highlight;
-            dataGridViewCellStyle3.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
-            dataGridViewCellStyle3.WrapMode = System.Windows.Forms.DataGridViewTriState.False;
-            this.dgv_多音字方案.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle3;
+            dataGridViewCellStyle1.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle1.BackColor = System.Drawing.SystemColors.Control;
+            dataGridViewCellStyle1.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            dataGridViewCellStyle1.ForeColor = System.Drawing.SystemColors.WindowText;
+            dataGridViewCellStyle1.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle1.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
+            dataGridViewCellStyle1.WrapMode = System.Windows.Forms.DataGridViewTriState.False;
+            this.dgv_多音字方案.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle1;
             this.dgv_多音字方案.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            dataGridViewCellStyle4.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
-            dataGridViewCellStyle4.BackColor = System.Drawing.SystemColors.Window;
-            dataGridViewCellStyle4.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
-            dataGridViewCellStyle4.ForeColor = System.Drawing.SystemColors.ControlText;
-            dataGridViewCellStyle4.SelectionBackColor = System.Drawing.SystemColors.Highlight;
-            dataGridViewCellStyle4.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
-            dataGridViewCellStyle4.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
-            this.dgv_多音字方案.DefaultCellStyle = dataGridViewCellStyle4;
+            dataGridViewCellStyle2.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
+            dataGridViewCellStyle2.BackColor = System.Drawing.SystemColors.Window;
+            dataGridViewCellStyle2.Font = new System.Drawing.Font("微软雅黑", 10.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(134)));
+            dataGridViewCellStyle2.ForeColor = System.Drawing.SystemColors.ControlText;
+            dataGridViewCellStyle2.SelectionBackColor = System.Drawing.SystemColors.Highlight;
+            dataGridViewCellStyle2.SelectionForeColor = System.Drawing.SystemColors.HighlightText;
+            dataGridViewCellStyle2.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
+            this.dgv_多音字方案.DefaultCellStyle = dataGridViewCellStyle2;
             this.dgv_多音字方案.Location = new System.Drawing.Point(8, 20);
             this.dgv_多音字方案.Name = "dgv_多音字方案";
             this.dgv_多音字方案.RowTemplate.Height = 23;
@@ -495,7 +495,6 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         private System.Windows.Forms.Label lab_上文;
         private System.Windows.Forms.Label lab_选择多音字方案;
         private System.Windows.Forms.Button bt_开始替换最终文本中的多音字;
-        private System.Windows.Forms.ComboBox cb_选择多音字方案;
         private System.Windows.Forms.SplitContainer sc_副面板主分割;
         private System.Windows.Forms.GroupBox gb_替换方案;
         private System.Windows.Forms.DataGridView dgv_多音字方案;
@@ -508,5 +507,6 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
         private System.Windows.Forms.TextBox tb_最终文本;
         private System.Windows.Forms.ContextMenuStrip cms_多音字替换方案;
         private System.Windows.Forms.ToolStripMenuItem 自动生成ToolStripMenuItem;
+        private System.Windows.Forms.CheckedListBox clb_选择多音字方案;
     }
 }
