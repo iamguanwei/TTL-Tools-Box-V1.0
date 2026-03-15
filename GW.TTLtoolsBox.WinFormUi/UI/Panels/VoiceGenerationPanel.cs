@@ -649,24 +649,7 @@ namespace GW.TTLtoolsBox.WinFormUi.UI.Panels
                     {
                         VoiceGenerationTask singleTask = selectedTasks[0];
                         bool isQueued = singleTask.Status == VoiceGenerationTaskStatus.排队中;
-                        bool isFirstQueued = true;
-
-                        if (isQueued)
-                        {
-                            foreach (var t in _voiceGenerationTaskQueue.Tasks)
-                            {
-                                if (t.Status == VoiceGenerationTaskStatus.排队中)
-                                {
-                                    if (t.Id != singleTask.Id)
-                                    {
-                                        isFirstQueued = false;
-                                    }
-                                    break;
-                                }
-                            }
-                        }
-
-                        插队IToolStripMenuItem.Enabled = isQueued && !isFirstQueued;
+                        插队IToolStripMenuItem.Enabled = isQueued;
                     }
                 }
             }
